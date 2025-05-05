@@ -1,76 +1,85 @@
 # Math Monster Game
 
-A math learning game built with Phaser 3 where monsters descend from the top of the screen with math problems. Solve the problems to defeat the monsters before they reach the bottom of the screen!
+A fun educational game where players solve math problems to defeat descending monsters before they reach the bottom of the screen.
 
-## Features
+## Game Overview
 
-- Multiple difficulty levels (Easy, Medium, Hard)
-- Progressive difficulty that increases over time
-- Different types of math problems (Addition, Subtraction, Multiplication)
-- Various monster types with unique animations
+Math Monster Game is built with Phaser 3 and offers a challenging educational experience where players practice arithmetic skills while having fun. The game features:
+
+- Three difficulty levels (Easy, Medium, Hard)
+- Different types of math problems (addition, subtraction, multiplication)
+- Increasing difficulty as the game progresses
+- Animated monsters that descend with math problems
 - Sound effects and background music
-- Score tracking
 
-## Prerequisites
+## How to Play
 
-- Node.js (v14 or higher)
-- npm (v6 or higher)
-
-## Installation
-
-1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd math-monster-game
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-## Running the Game
-
-Start the development server:
-
-```bash
-npm start
-```
-
-The game will be available at `http://localhost:3000`.
-
-## Building for Production
-
-Build the game for production:
-
-```bash
-npm run build
-```
-
-The built files will be in the `dist` directory.
+1. Choose a difficulty level
+2. Solve the math problem displayed on each monster
+3. Type your answer and press Enter
+4. Prevent monsters from reaching the bottom of the screen
 
 ## Technologies Used
 
-- Phaser 3 - HTML5 game framework
-- Vite - Next-generation frontend build tool
+- Phaser 3 - HTML5 Game Framework
 - JavaScript (ES6+)
+- Vite - Build tool and development server
+
+## Development
+
+### Prerequisites
+
+- Node.js (v14.0.0 or higher)
+- npm (v6.0.0 or higher)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/BasselAlnabhan/Mathgame.git
+
+# Navigate to the project directory
+cd Mathgame
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm start
+```
+
+### Building for Production
+
+```bash
+# Create a production build
+npm run build
+```
 
 ## Project Structure
 
-- `src/index.js` - Main entry point
-- `src/scenes/` - Game scenes (Boot, Menu, Game, GameOver)
-- `src/objects/` - Game objects (Monster, MathProblem)
-- `src/assets/` - Game assets (images, sounds, fonts)
+- `src/` - Source code
+  - `config/` - Game configuration
+  - `managers/` - Manager classes (Sound, UI)
+  - `objects/` - Game objects (Monster, MathProblem)
+  - `scenes/` - Game scenes (Boot, Menu, Game, GameOver)
+  - `index.js` - Main entry point
+- `assets/` - Game assets (images, sounds)
+- `public/` - Static files
 
-## Game Controls
+## Code Architecture
 
-- **Number Keys (0-9)**: Enter answers
-- **Backspace**: Delete entered digit
-- **Enter**: Submit answer
+The game follows a modular approach with clear separation of concerns:
 
-## Credits
+- **Scene Management**: Different game states are managed by separate scene classes
+- **Configuration**: Game settings are centralized in GameConfig
+- **UI Factory**: Consistent UI elements created through UIFactory
+- **Sound Management**: Audio handled by SoundManager
 
-- Original game developed as a canvas-based HTML5 game
-- Modernized with Phaser 3 for improved performance and structure
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [Phaser](https://phaser.io/) - The awesome HTML5 game framework
+- [OpenGameArt](https://opengameart.org/) - For some of the game assets
