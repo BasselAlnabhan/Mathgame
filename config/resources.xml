@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+	<images>
+		<image name="background" url="assets/images/background.jpg" />
+		<image name="cockpit" url="assets/images/cockpit.png" />
+		<image name="gameover" url="assets/images/gameover.png" />
+	</images>
+	<sprites>
+		<sprite name="monster1" url="assets/images/monster1.png" once="false" defaultstate="normal">
+			<states>
+				<state name="normal" xpos="0" ypos="0" width="170" height="170" cols="0" dir="horizontal" speed="6" frames="[0,1,2,3,2,1]"/>
+			</states>
+		</sprite>
+		<sprite name="monster2" url="assets/images/monster2.png" once="false" defaultstate="normal">
+			<states>
+				<state name="normal" xpos="0" ypos="0" width="65" height="85" cols="0" dir="horizontal" speed="6" frames="[0,1,2,3,4,5]"/>
+			</states>
+		</sprite>
+		<sprite name="badpig" url="assets/images/badpig.png" once="false" defaultstate="normal">
+			<states>
+				<state name="normal" xpos="0" ypos="0" width="154" height="171" cols="0" dir="horizontal" speed="6" frames="[1,1,1,1,0,1,0,1,1,2,2,2,2,2,2,1,1]"/>
+			</states>
+		</sprite>
+		<sprite name="explosion" url="assets/images/explosion.png" once="true" defaultstate="normal">
+			<states>
+				<state name="normal" xpos="0" ypos="0" width="128" height="128" cols="6" dir="horizontal" speed="25" frames="[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]"/>
+			</states>
+		</sprite>
+	</sprites>
+	<sounds>
+		<!-- Using the OGG file for background music -->
+		<sound name="music" volume="0.2" url="assets/sounds/zoolook.ogg"/>
+		<sound name="boom" volume="0.2" url="assets/sounds/explosion.wav"/>
+		<sound name="monster2" volume="0.2" url="assets/sounds/wario.wav"/>
+		<sound name="badpig" volume="0.1" url="assets/sounds/pig.wav"/>
+	</sounds>
+</resources>

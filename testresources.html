@@ -1,0 +1,34 @@
+<html>
+
+<body>
+	<input type="button" value="test" onclick="test();">
+	<input id="inp" type="text">
+	<img id="cockpit" width="1024" height="768">
+	<script src="scripts/util.js"></script>
+	<script src="scripts/sprite.js"></script>
+	<script src="scripts/resources.js"></script>
+	<script src="scripts/monster.js"></script>
+	<script>
+
+		var r;
+
+		function onReady() {
+			var moster = new Monster(r, 10, "monster1", 6, "5x4", 20, 20);
+		}
+
+		function test() {
+			try {
+				r = new Resources();
+			}
+			catch (err) {
+				document.write(err);
+			}
+			r.OnReady(onReady);
+			r.LoadResources('config/resources.xml');
+		}
+
+
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rules>
+	<speed min="20" startdelay="180" increment="4" every="40" max="40"/>
+	<monsters list="['monster1','monster2','badpig']" min="1" startdelay="0" increment="1" every="50" max="5"/>
+	<lession type="addition_random" min="1" max="5"/>
+<!--
+	<lession type="multiply_random" min="1" max="10"/>
+	<lession type="multiply_table" table="7"/>
+	<lession type="substraction_random" min="2" max="12" allownegativeresult="false"/>
+	<lession type="multiply_random" min="0" max="10"/>
+	<lession type="multiply_table" table="9"/>
+	<lession type="substraction_random" min="10" max="20" allownegativeresult="false"/>
+-->
+</rules>
