@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "vite": "^4.3.9",
-    "jest": "^29.5.0"
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0"
   }
 }

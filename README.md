@@ -55,6 +55,27 @@ npm start
 npm run build
 ```
 
+### Testing
+
+```bash
+# Run tests
+npm test
+```
+
+## Continuous Integration and Deployment
+
+The project uses GitHub Actions for continuous integration and deployment to Netlify:
+
+- **CI Pipeline**: Automatically runs tests on pull requests and pushes to main branch
+- **CD Pipeline**: Automatically deploys to Netlify when changes are pushed to main branch
+
+### GitHub Secrets Required
+
+To enable deployment to Netlify, the following secrets must be set in your GitHub repository:
+
+- `NETLIFY_AUTH_TOKEN`: Your Netlify authentication token
+- `NETLIFY_SITE_ID`: The site ID from your Netlify account
+
 ## Project Structure
 
 - `src/` - Source code
@@ -65,6 +86,8 @@ npm run build
   - `index.js` - Main entry point
 - `assets/` - Game assets (images, sounds)
 - `public/` - Static files
+- `.github/workflows/` - CI/CD configuration files
+- `netlify.toml` - Netlify deployment configuration
 
 ## Code Architecture
 

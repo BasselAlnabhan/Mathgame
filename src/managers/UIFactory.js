@@ -15,7 +15,7 @@ export default class UIFactory {
             .setOrigin(0.5);
     }
 
-    createButton(x, y, text, backgroundColor = '#1a8f14', hoverColor = '#34c72b') {
+    createButton(x, y, text, backgroundColor = '#0066cc', hoverColor = '#3399ff') {
         const button = this.scene.add.text(
             x, y, text,
             {
