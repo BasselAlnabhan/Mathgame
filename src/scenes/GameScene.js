@@ -19,6 +19,10 @@ export default class GameScene extends Phaser.Scene {
         this.lastMonsterTime = 0;
         this.gameTimeElapsed = 0;
         this.nextSpeedIncreaseTime = GAME_PROGRESSION.speedIncreaseInterval;
+
+        // Responsive layout
+        this.isLandscape = true;
+        this.isMobile = false;
     }
 
     init(data) {
@@ -34,6 +38,50 @@ export default class GameScene extends Phaser.Scene {
 
         // Reset game state
         this.resetGameState();
+
+        // Check device type and orientation
+        this.checkDeviceAndOrientation();
+    }
+
+    checkDeviceAndOrientation() {
+        // Check if mobile device
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Check orientation
+        this.isLandscape = window.innerWidth > window.innerHeight;
+
+        // Setup orientation change handler
+        window.addEventListener('resize', this.handleResize.bind(this));
+    }
+
+    handleResize() {
+        // Update orientation flag
+        const wasLandscape = this.isLandscape;
+        this.isLandscape = window.innerWidth > window.innerHeight;
+
+        // Only rebuild UI if orientation changed
+        if (wasLandscape !== this.isLandscape) {
+            // Remove existing UI elements
+            this.cleanupUI();
+
+            // Rebuild UI for new orientation
+            this.setupGameArea();
+            this.setupUI();
+        }
+
+        // Recalculate game over line
+        this.gameOverLine = LAYOUT.gameOverLine(this.cameras.main.height);
+    }
+
+    cleanupUI() {
+        if (this.inputField) this.inputField.destroy();
+        if (this.cursor) this.cursor.destroy();
+        if (this.scoreText) this.scoreText.destroy();
+        if (this.numPad) {
+            this.numPad.forEach(button => button.destroy());
+        }
+        if (this.deleteButton) this.deleteButton.destroy();
+        if (this.enterButton) this.enterButton.destroy();
     }
 
     resetGameState() {
@@ -71,17 +119,32 @@ export default class GameScene extends Phaser.Scene {
     }
 
     setupGameArea() {
-        // Set up game over line
-        this.gameOverLine = LAYOUT.gameOverLine(this.cameras.main.height);
+        // Set up game over line - adjust for different orientations
+        const height = this.cameras.main.height;
+        this.gameOverLine = this.isLandscape
+            ? LAYOUT.gameOverLine(height)
+            : height * 0.65; // Higher line in portrait mode to leave room for numpad
 
-        // Add background
+        // Add background - adjusted for responsiveness
         this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'background')
             .setDisplaySize(this.cameras.main.width, this.cameras.main.height);
 
-        // Add cockpit overlay at the bottom
-        this.add.image(this.cameras.main.width / 2, this.cameras.main.height, 'cockpit')
-            .setOrigin(0.5, 1)
-            .setDisplaySize(this.cameras.main.width, 200);
+        // Add cockpit overlay - adjusted for different orientations
+        if (this.isLandscape) {
+            this.add.image(this.cameras.main.width / 2, this.cameras.main.height, 'cockpit')
+                .setOrigin(0.5, 1)
+                .setDisplaySize(this.cameras.main.width, this.cameras.main.height * 0.25);
+        } else {
+            // In portrait mode, use a different layout for the control panel
+            const panelHeight = this.cameras.main.height * 0.35;
+            this.add.rectangle(
+                this.cameras.main.width / 2,
+                this.cameras.main.height - panelHeight / 2,
+                this.cameras.main.width,
+                panelHeight,
+                0x222222
+            ).setOrigin(0.5, 0.5).setAlpha(0.8);
+        }
 
         // Debug: show game over line
         if (this.game.config.physics.arcade.debug) {
@@ -98,22 +161,168 @@ export default class GameScene extends Phaser.Scene {
     }
 
     setupUI() {
-        // Add score text
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Add score text - adjusted for different orientations
         this.scoreText = this.uiFactory.createScoreText(
-            this.cameras.main.width - 20,
-            20,
+            this.isLandscape ? width - 20 : width - 10,
+            this.isLandscape ? 20 : 10,
             this.score
         );
 
-        // Add input field
+        // Scale UI based on screen size
+        const scale = Math.min(width / 1024, height / 768);
+        this.scoreText.setFontSize(24 * scale);
+
+        // Add input field - adjusted for different orientations
+        const inputY = this.isLandscape
+            ? height - 50
+            : this.gameOverLine + (height - this.gameOverLine) * 0.25;
+
         const inputHandler = this.uiFactory.createInputField(
-            this.cameras.main.width / 2,
-            this.cameras.main.height - 50
+            width / 2,
+            inputY,
+            scale
         );
 
         this.inputField = inputHandler.inputField;
         this.cursor = inputHandler.cursor;
         this.updateCursorPosition = inputHandler.updateCursorPosition;
+
+        // Add numpad for mobile devices
+        if (this.isMobile || window.innerWidth < 768) {
+            this.setupNumpad();
+        }
+    }
+
+    setupNumpad() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
+        // Calculate button size and spacing based on screen dimensions
+        const buttonSize = this.isLandscape
+            ? Math.min(width / 12, height / 6)
+            : Math.min(width / 8, height / 14);
+
+        const padding = buttonSize * 0.2;
+        const fontSize = Math.max(20, Math.min(32, buttonSize * 0.7));
+
+        // Numpad layout depends on orientation
+        let numpadX, numpadY, numpadWidth, numpadHeight, buttonSpacing;
+
+        if (this.isLandscape) {
+            // In landscape, place numpad at the right side
+            numpadX = width - (buttonSize * 4) - padding;
+            numpadY = height - (buttonSize * 4) - padding;
+            buttonSpacing = buttonSize + padding;
+        } else {
+            // In portrait, place numpad at the bottom
+            numpadX = width / 2 - (buttonSize * 1.5) - padding;
+            numpadY = this.gameOverLine + (height - this.gameOverLine) * 0.5;
+            buttonSpacing = buttonSize + padding;
+        }
+
+        this.numPad = [];
+
+        // Create numpad buttons (0-9)
+        for (let i = 1; i <= 9; i++) {
+            const row = Math.floor((i - 1) / 3);
+            const col = (i - 1) % 3;
+
+            const button = this.add.text(
+                numpadX + col * buttonSpacing,
+                numpadY + row * buttonSpacing,
+                i.toString(),
+                {
+                    fontFamily: 'Arial',
+                    fontSize: fontSize,
+                    color: '#ffffff',
+                    backgroundColor: '#333333',
+                    padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
+                }
+            )
+                .setOrigin(0.5)
+                .setInteractive({ useHandCursor: true })
+                .on('pointerdown', () => this.handleNumpadInput(i.toString()));
+
+            this.numPad.push(button);
+        }
+
+        // Add '0' button
+        const zeroButton = this.add.text(
+            numpadX + 1 * buttonSpacing,
+            numpadY + 3 * buttonSpacing,
+            '0',
+            {
+                fontFamily: 'Arial',
+                fontSize: fontSize,
+                color: '#ffffff',
+                backgroundColor: '#333333',
+                padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
+            }
+        )
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => this.handleNumpadInput('0'));
+
+        this.numPad.push(zeroButton);
+
+        // Add delete button
+        this.deleteButton = this.add.text(
+            numpadX + 0 * buttonSpacing,
+            numpadY + 3 * buttonSpacing,
+            '←',
+            {
+                fontFamily: 'Arial',
+                fontSize: fontSize,
+                color: '#ffffff',
+                backgroundColor: '#aa3333',
+                padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
+            }
+        )
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => this.handleDeleteInput());
+
+        // Add enter button
+        this.enterButton = this.add.text(
+            numpadX + 2 * buttonSpacing,
+            numpadY + 3 * buttonSpacing,
+            '↵',
+            {
+                fontFamily: 'Arial',
+                fontSize: fontSize,
+                color: '#ffffff',
+                backgroundColor: '#33aa33',
+                padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
+            }
+        )
+            .setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => this.checkAnswer());
+    }
+
+    handleNumpadInput(value) {
+        // Add number to answer text
+        this.answerText += value;
+        this.inputField.setText(this.answerText);
+        this.updateCursorPosition();
+
+        // Play sound feedback
+        this.soundManager.playSound('click');
+    }
+
+    handleDeleteInput() {
+        // Remove last character
+        if (this.answerText.length > 0) {
+            this.answerText = this.answerText.substring(0, this.answerText.length - 1);
+            this.inputField.setText(this.answerText);
+            this.updateCursorPosition();
+
+            // Play sound feedback
+            this.soundManager.playSound('click');
+        }
     }
 
     setupInput() {
@@ -128,6 +337,7 @@ export default class GameScene extends Phaser.Scene {
             this.answerText += number.toString();
             this.inputField.setText(this.answerText);
             this.updateCursorPosition();
+            this.soundManager.playSound('click');
         }
 
         // Handle backspace
@@ -135,6 +345,7 @@ export default class GameScene extends Phaser.Scene {
             this.answerText = this.answerText.substring(0, this.answerText.length - 1);
             this.inputField.setText(this.answerText);
             this.updateCursorPosition();
+            this.soundManager.playSound('click');
         }
 
         // Handle Enter key (submit answer)
@@ -144,6 +355,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     checkAnswer() {
+        if (this.answerText.length === 0) {
+            return;
+        }
+
         const answer = parseInt(this.answerText);
         let correct = false;
 
@@ -157,6 +372,13 @@ export default class GameScene extends Phaser.Scene {
                 this.monsters.splice(i, 1);
                 break;
             }
+        }
+
+        // Play sound feedback
+        if (correct) {
+            this.soundManager.playSound('correct');
+        } else {
+            this.soundManager.playSound('wrong');
         }
 
         // Clear input regardless of correct or not
@@ -222,6 +444,9 @@ export default class GameScene extends Phaser.Scene {
         // Stop keyboard input
         this.input.keyboard.off('keydown', this.handleKeyDown, this);
 
+        // Remove event listeners
+        window.removeEventListener('resize', this.handleResize.bind(this));
+
         // Go to game over scene
         this.scene.start('GameOverScene', { score: this.score, difficulty: this.difficulty });
     }
@@ -249,17 +474,18 @@ export default class GameScene extends Phaser.Scene {
     }
 
     increaseDifficultyOverTime() {
+        // Check if it's time to increase speed
         if (this.gameTimeElapsed >= this.nextSpeedIncreaseTime) {
             // Increase monster speed
             this.monsterSpeedBase += GAME_PROGRESSION.speedIncreaseAmount;
 
-            // Decrease spawn interval (but not below minimum)
+            // Decrease spawn interval (to a minimum)
             this.monsterSpawnInterval = Math.max(
                 GAME_PROGRESSION.minimumSpawnInterval,
                 this.monsterSpawnInterval - GAME_PROGRESSION.spawnIntervalDecreaseAmount
             );
 
-            // Set next increase time
+            // Schedule next speed increase
             this.nextSpeedIncreaseTime += GAME_PROGRESSION.speedIncreaseInterval;
         }
     }

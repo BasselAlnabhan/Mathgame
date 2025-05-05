@@ -169,6 +169,21 @@ export default class BootScene extends Phaser.Scene {
             console.log('Loading boom sound from:', 'assets/sounds/explosion.wav');
             this.load.audio('boom', ['assets/sounds/explosion.wav']);
             this.load.once('filecomplete-audio-boom', () => onSoundLoad('boom'));
+
+            // Load button click sound
+            console.log('Loading click sound');
+            this.load.audio('click', ['assets/sounds/click.wav']);
+            this.load.once('filecomplete-audio-click', () => onSoundLoad('click'));
+
+            // Load correct answer sound
+            console.log('Loading correct answer sound');
+            this.load.audio('correct', ['assets/sounds/correct.wav']);
+            this.load.once('filecomplete-audio-correct', () => onSoundLoad('correct'));
+
+            // Load wrong answer sound
+            console.log('Loading wrong answer sound');
+            this.load.audio('wrong', ['assets/sounds/wrong.wav']);
+            this.load.once('filecomplete-audio-wrong', () => onSoundLoad('wrong'));
         } catch (error) {
             console.error('Error during sound loading setup:', error);
         }
