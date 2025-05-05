@@ -81,8 +81,14 @@ export default class UIFactory {
             scale = this.getResponsiveScale();
         }
 
-        // Adjust font size based on scale
-        const fontSize = Math.round(32 * scale);
+        // Check if it's a mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // Adjust font size based on scale and device
+        const fontSize = Math.round(isMobile ? 36 * scale : 32 * scale);
+
+        // Set field width based on device type
+        const fieldWidth = isMobile ? Math.round(300 * scale) : Math.round(200 * scale);
 
         const inputField = this.scene.add.text(
             x, y, '',
@@ -92,21 +98,29 @@ export default class UIFactory {
                 color: '#ffffff',
                 padding: { x: 10, y: 5 },
                 backgroundColor: '#222222',
-                fixedWidth: Math.round(200 * scale)
+                fixedWidth: fieldWidth
             }
         ).setOrigin(0.5);
 
         // Make the input field look more like a field
         inputField.setActive(true).setInteractive();
 
-        // Input field background
-        const bgWidth = inputField.width + (20 * scale);
-        const bgHeight = inputField.height + (10 * scale);
+        // Input field background - make it more prominent on mobile
+        const bgWidth = inputField.width + (isMobile ? 40 * scale : 20 * scale);
+        const bgHeight = inputField.height + (isMobile ? 20 * scale : 10 * scale);
         const inputBg = this.scene.add.rectangle(
             x, y,
             bgWidth, bgHeight,
-            0x222222, 0.7
+            0x222222, isMobile ? 0.9 : 0.7
         ).setOrigin(0.5);
+
+        // Add border to make input field more visible
+        const border = this.scene.add.rectangle(
+            x, y,
+            bgWidth, bgHeight,
+            0xffffff, 0.3
+        ).setOrigin(0.5);
+        border.setStrokeStyle(2, 0xffffff, 0.5);
 
         // Add cursor
         const cursor = this.scene.add.rectangle(
@@ -124,26 +138,35 @@ export default class UIFactory {
         });
 
         // Place cursor correctly initially
-        inputField.setDepth(1);
-        cursor.setDepth(2);
+        inputField.setDepth(2);
+        border.setDepth(1);
+        inputBg.setDepth(1);
+        cursor.setDepth(3);
         this.updateInputCursor(inputField, cursor);
 
         // Make the input interactive (tap to focus)
         inputBg.setInteractive({ useHandCursor: true });
+        border.setInteractive({ useHandCursor: true });
 
         // Focus handling (for desktop)
         let isFocused = true;
 
-        inputBg.on('pointerdown', () => {
+        const focusInput = () => {
             isFocused = true;
             cursor.visible = true;
-        });
+            border.setStrokeStyle(3, 0x3399ff, 1);
+        };
+
+        inputBg.on('pointerdown', focusInput);
+        border.on('pointerdown', focusInput);
+        inputField.on('pointerdown', focusInput);
 
         // Allow clicking outside to unfocus on desktop
         this.scene.input.on('pointerdown', (pointer, gameObjects) => {
-            if (!gameObjects.includes(inputBg) && !gameObjects.includes(inputField)) {
+            if (!gameObjects.includes(inputBg) && !gameObjects.includes(inputField) && !gameObjects.includes(border)) {
                 isFocused = false;
                 cursor.visible = false;
+                border.setStrokeStyle(2, 0xffffff, 0.5);
             }
         });
 

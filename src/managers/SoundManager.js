@@ -28,6 +28,15 @@ export default class SoundManager {
                 volume: SOUND_CONFIG.effects.volume
             });
 
+            // Add monster specific sound effects
+            this.sounds.wario = this.scene.sound.add('wario', {
+                volume: SOUND_CONFIG.effects.volume
+            });
+
+            this.sounds.pig = this.scene.sound.add('pig', {
+                volume: SOUND_CONFIG.effects.volume
+            });
+
             // Add click sound for buttons and number inputs
             this.sounds.click = this.scene.sound.add('click', {
                 volume: SOUND_CONFIG.effects.volume * 0.7

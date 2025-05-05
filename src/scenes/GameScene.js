@@ -23,6 +23,9 @@ export default class GameScene extends Phaser.Scene {
         // Responsive layout
         this.isLandscape = true;
         this.isMobile = false;
+
+        // Currently targeted monster for answer buttons
+        this.currentTargetMonster = null;
     }
 
     init(data) {
@@ -69,14 +72,18 @@ export default class GameScene extends Phaser.Scene {
             this.setupUI();
         }
 
-        // Recalculate game over line
-        this.gameOverLine = LAYOUT.gameOverLine(this.cameras.main.height);
+        // Recalculate game over line with the orientation parameter
+        this.gameOverLine = LAYOUT.gameOverLine(this.cameras.main.height, this.isLandscape);
     }
 
     cleanupUI() {
         if (this.inputField) this.inputField.destroy();
         if (this.cursor) this.cursor.destroy();
         if (this.scoreText) this.scoreText.destroy();
+
+        // Close any open modal
+        this.closeAnswerModal();
+
         if (this.numPad) {
             this.numPad.forEach(button => button.destroy());
         }
@@ -119,32 +126,21 @@ export default class GameScene extends Phaser.Scene {
     }
 
     setupGameArea() {
-        // Set up game over line - adjust for different orientations
+        // Set up game over line - using new LAYOUT function with orientation parameter
         const height = this.cameras.main.height;
-        this.gameOverLine = this.isLandscape
-            ? LAYOUT.gameOverLine(height)
-            : height * 0.65; // Higher line in portrait mode to leave room for numpad
+        this.gameOverLine = LAYOUT.gameOverLine(height, this.isLandscape);
 
         // Add background - adjusted for responsiveness
         this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'background')
             .setDisplaySize(this.cameras.main.width, this.cameras.main.height);
 
-        // Add cockpit overlay - adjusted for different orientations
+        // Add cockpit overlay only in landscape mode
         if (this.isLandscape) {
             this.add.image(this.cameras.main.width / 2, this.cameras.main.height, 'cockpit')
                 .setOrigin(0.5, 1)
                 .setDisplaySize(this.cameras.main.width, this.cameras.main.height * 0.25);
-        } else {
-            // In portrait mode, use a different layout for the control panel
-            const panelHeight = this.cameras.main.height * 0.35;
-            this.add.rectangle(
-                this.cameras.main.width / 2,
-                this.cameras.main.height - panelHeight / 2,
-                this.cameras.main.width,
-                panelHeight,
-                0x222222
-            ).setOrigin(0.5, 0.5).setAlpha(0.8);
         }
+        // No alternate grey background in portrait mode
 
         // Debug: show game over line
         if (this.game.config.physics.arcade.debug) {
@@ -164,165 +160,49 @@ export default class GameScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // Add score text - adjusted for different orientations
-        this.scoreText = this.uiFactory.createScoreText(
-            this.isLandscape ? width - 20 : width - 10,
+        // Get UI scale based on screen size
+        const scale = LAYOUT.getUIScale(width, height);
+
+        // Add score text - moved to left side of screen
+        this.scoreText = this.add.text(
+            20, // Left margin
             this.isLandscape ? 20 : 10,
-            this.score
-        );
+            `Score: ${this.score}`,
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(24 * scale),
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 2
+            }
+        ).setOrigin(0, 0); // Left aligned
 
-        // Scale UI based on screen size
-        const scale = Math.min(width / 1024, height / 768);
-        this.scoreText.setFontSize(24 * scale);
-
-        // Add input field - adjusted for different orientations
-        const inputY = this.isLandscape
-            ? height - 50
-            : this.gameOverLine + (height - this.gameOverLine) * 0.25;
-
-        const inputHandler = this.uiFactory.createInputField(
-            width / 2,
-            inputY,
-            scale
-        );
-
-        this.inputField = inputHandler.inputField;
-        this.cursor = inputHandler.cursor;
-        this.updateCursorPosition = inputHandler.updateCursorPosition;
-
-        // Add numpad for mobile devices
+        // On mobile, we skip the traditional input field and use direct monster targeting instead
         if (this.isMobile || window.innerWidth < 768) {
-            this.setupNumpad();
-        }
-    }
-
-    setupNumpad() {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-
-        // Calculate button size and spacing based on screen dimensions
-        const buttonSize = this.isLandscape
-            ? Math.min(width / 12, height / 6)
-            : Math.min(width / 8, height / 14);
-
-        const padding = buttonSize * 0.2;
-        const fontSize = Math.max(20, Math.min(32, buttonSize * 0.7));
-
-        // Numpad layout depends on orientation
-        let numpadX, numpadY, numpadWidth, numpadHeight, buttonSpacing;
-
-        if (this.isLandscape) {
-            // In landscape, place numpad at the right side
-            numpadX = width - (buttonSize * 4) - padding;
-            numpadY = height - (buttonSize * 4) - padding;
-            buttonSpacing = buttonSize + padding;
+            this.setupDirectTargeting();
         } else {
-            // In portrait, place numpad at the bottom
-            numpadX = width / 2 - (buttonSize * 1.5) - padding;
-            numpadY = this.gameOverLine + (height - this.gameOverLine) * 0.5;
-            buttonSpacing = buttonSize + padding;
+            // For desktop, keep the traditional input field
+            const inputY = this.isLandscape
+                ? height - 50
+                : this.gameOverLine + (height - this.gameOverLine) * 0.25;
+
+            const inputHandler = this.uiFactory.createInputField(
+                width / 2,
+                inputY,
+                scale
+            );
+
+            this.inputField = inputHandler.inputField;
+            this.cursor = inputHandler.cursor;
+            this.updateCursorPosition = inputHandler.updateCursorPosition;
         }
-
-        this.numPad = [];
-
-        // Create numpad buttons (0-9)
-        for (let i = 1; i <= 9; i++) {
-            const row = Math.floor((i - 1) / 3);
-            const col = (i - 1) % 3;
-
-            const button = this.add.text(
-                numpadX + col * buttonSpacing,
-                numpadY + row * buttonSpacing,
-                i.toString(),
-                {
-                    fontFamily: 'Arial',
-                    fontSize: fontSize,
-                    color: '#ffffff',
-                    backgroundColor: '#333333',
-                    padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
-                }
-            )
-                .setOrigin(0.5)
-                .setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => this.handleNumpadInput(i.toString()));
-
-            this.numPad.push(button);
-        }
-
-        // Add '0' button
-        const zeroButton = this.add.text(
-            numpadX + 1 * buttonSpacing,
-            numpadY + 3 * buttonSpacing,
-            '0',
-            {
-                fontFamily: 'Arial',
-                fontSize: fontSize,
-                color: '#ffffff',
-                backgroundColor: '#333333',
-                padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
-            }
-        )
-            .setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => this.handleNumpadInput('0'));
-
-        this.numPad.push(zeroButton);
-
-        // Add delete button
-        this.deleteButton = this.add.text(
-            numpadX + 0 * buttonSpacing,
-            numpadY + 3 * buttonSpacing,
-            '←',
-            {
-                fontFamily: 'Arial',
-                fontSize: fontSize,
-                color: '#ffffff',
-                backgroundColor: '#aa3333',
-                padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
-            }
-        )
-            .setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => this.handleDeleteInput());
-
-        // Add enter button
-        this.enterButton = this.add.text(
-            numpadX + 2 * buttonSpacing,
-            numpadY + 3 * buttonSpacing,
-            '↵',
-            {
-                fontFamily: 'Arial',
-                fontSize: fontSize,
-                color: '#ffffff',
-                backgroundColor: '#33aa33',
-                padding: { left: buttonSize * 0.3, right: buttonSize * 0.3, top: buttonSize * 0.2, bottom: buttonSize * 0.2 }
-            }
-        )
-            .setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => this.checkAnswer());
     }
 
-    handleNumpadInput(value) {
-        // Add number to answer text
-        this.answerText += value;
-        this.inputField.setText(this.answerText);
-        this.updateCursorPosition();
+    setupDirectTargeting() {
+        // We don't need to create a dedicated UI element here
+        // Instead, we'll make the monsters directly tappable
 
-        // Play sound feedback
-        this.soundManager.playSound('click');
-    }
-
-    handleDeleteInput() {
-        // Remove last character
-        if (this.answerText.length > 0) {
-            this.answerText = this.answerText.substring(0, this.answerText.length - 1);
-            this.inputField.setText(this.answerText);
-            this.updateCursorPosition();
-
-            // Play sound feedback
-            this.soundManager.playSound('click');
-        }
+        // No help text needed anymore
     }
 
     setupInput() {
@@ -331,6 +211,11 @@ export default class GameScene extends Phaser.Scene {
     }
 
     handleKeyDown(event) {
+        // Skip keyboard handling on mobile
+        if (this.isMobile || window.innerWidth < 768) {
+            return;
+        }
+
         // Handle numeric input (0-9)
         if ((event.keyCode >= 48 && event.keyCode <= 57) || (event.keyCode >= 96 && event.keyCode <= 105)) {
             const number = event.keyCode >= 96 ? event.keyCode - 96 : event.keyCode - 48;
@@ -399,12 +284,25 @@ export default class GameScene extends Phaser.Scene {
         // Select a random monster type
         const monsterType = MONSTER_TYPES[Phaser.Math.Between(0, MONSTER_TYPES.length - 1)];
 
-        // Calculate a random x position
-        const x = Phaser.Math.Between(100, this.cameras.main.width - 100);
+        // Calculate x position with spacing to avoid overlaps
+        let x;
+        let attempts = 0;
+        const minSpacing = 120; // Minimum pixel distance between monsters
+
+        do {
+            x = Phaser.Math.Between(100, this.cameras.main.width - 100);
+            attempts++;
+
+            // Break after 5 attempts to avoid infinite loop
+            if (attempts > 5) break;
+
+        } while (this.isPositionTooCloseToExistingMonster(x, minSpacing));
 
         // Calculate the speed (increasing over time)
         const speedMultiplier = 1 + (this.gameTimeElapsed / 60000) * GAME_PROGRESSION.speedMultiplierPerMinute;
-        const speed = this.monsterSpeedBase * speedMultiplier;
+        // Apply orientation-based multiplier to ensure consistent timing
+        const orientationMultiplier = LAYOUT.speedMultiplier(this.isLandscape);
+        const speed = this.monsterSpeedBase * speedMultiplier * orientationMultiplier;
 
         // Create the monster
         const monster = new Monster(
@@ -417,11 +315,36 @@ export default class GameScene extends Phaser.Scene {
             problem.result
         );
 
+        // For mobile or small screens, make the monster tappable
+        if (this.isMobile || window.innerWidth < 768) {
+            monster.setInteractive({ useHandCursor: true });
+            monster.on('pointerdown', () => this.handleMonsterTap(monster));
+
+            // Add hover effect for visual feedback
+            monster.on('pointerover', () => {
+                monster.setAlpha(0.8);
+            });
+
+            monster.on('pointerout', () => {
+                monster.setAlpha(1);
+            });
+        }
+
         // Play monster sound
         monster.playSound();
 
         // Add to monsters array
         this.monsters.push(monster);
+    }
+
+    // Helper method to check if a position is too close to existing monsters
+    isPositionTooCloseToExistingMonster(x, minSpacing) {
+        for (const monster of this.monsters) {
+            if (Math.abs(monster.x - x) < minSpacing) {
+                return true;
+            }
+        }
+        return false;
     }
 
     checkGameOver() {
@@ -463,10 +386,25 @@ export default class GameScene extends Phaser.Scene {
         // Update all monsters
         this.monsters.forEach(monster => monster.update());
 
-        // Spawn new monsters
-        if (time - this.lastMonsterTime > this.monsterSpawnInterval && this.monsters.length < this.maxMonsters) {
-            this.addMonster();
-            this.lastMonsterTime = time;
+        // Check if we need to update the targeted monster
+        // This will select a new monster if the current one is gone
+        this.updateTargetedMonster();
+
+        // Spawn new monsters - ensure at least monsterSpawnInterval time has passed
+        // since the game started or since the last monster was spawned
+        const timeElapsedSinceLastMonster = time - this.lastMonsterTime;
+
+        if (timeElapsedSinceLastMonster > this.monsterSpawnInterval &&
+            this.monsters.length < this.maxMonsters) {
+            // Make sure this is not the first update frame when game is starting
+            // This prevents multiple monsters spawning at once on game start
+            if (this.lastMonsterTime > 0 || this.gameTimeElapsed > 1000) {
+                this.addMonster();
+                this.lastMonsterTime = time;
+            } else {
+                // First monster - set the timestamp without spawning yet
+                this.lastMonsterTime = time;
+            }
         }
 
         // Increase difficulty over time
@@ -487,6 +425,197 @@ export default class GameScene extends Phaser.Scene {
 
             // Schedule next speed increase
             this.nextSpeedIncreaseTime += GAME_PROGRESSION.speedIncreaseInterval;
+        }
+    }
+
+    // Helper method to find the bottom-most monster and update target if needed
+    updateTargetedMonster() {
+        // If no monsters, clear the current target and buttons
+        if (this.monsters.length === 0) {
+            if (this.currentTargetMonster) {
+                this.currentTargetMonster = null;
+                this.closeAnswerModal();
+            }
+            return;
+        }
+
+        // If we don't have a target monster or the current target no longer exists,
+        // find a new one (always target the bottom-most monster)
+        if (!this.currentTargetMonster || !this.monsters.includes(this.currentTargetMonster)) {
+            // Find the bottom-most monster
+            let bottomMonster = this.monsters[0];
+            for (let i = 1; i < this.monsters.length; i++) {
+                if (this.monsters[i].y > bottomMonster.y) {
+                    bottomMonster = this.monsters[i];
+                }
+            }
+
+            // Set as new target and show its buttons
+            this.currentTargetMonster = bottomMonster;
+            this.createAnswerSelectionModal(bottomMonster);
+        }
+    }
+
+    // Modified handle monster tap to switch targets without toggling off
+    handleMonsterTap(monster) {
+        // Only switch if this is a different monster
+        if (monster !== this.currentTargetMonster) {
+            // Switch to this monster for targeting
+            this.currentTargetMonster = monster;
+
+            // Create answer selection modal for the new target
+            this.createAnswerSelectionModal(monster);
+        }
+    }
+
+    // Method to create an answer selection modal when a monster is tapped
+    createAnswerSelectionModal(monster) {
+        // Close existing modal first
+        this.closeAnswerModal();
+
+        // Get dimensions
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const scale = LAYOUT.getUIScale(width, height);
+
+        // Initialize modal elements array - no background panel
+        this.modalElements = [];
+
+        // Create answer options for the modal
+        this.createAnswerOptions(monster);
+    }
+
+    // Create answer options for the modal
+    createAnswerOptions(monster) {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const scale = LAYOUT.getUIScale(width, height);
+
+        // Create an array of answers including the correct one
+        const correctAnswer = monster.result;
+        const answers = [correctAnswer];
+
+        // Add incorrect options (±1-10 from correct answer)
+        while (answers.length < 4) {
+            const offset = Phaser.Math.Between(1, 10) * (Math.random() > 0.5 ? 1 : -1);
+            const newAnswer = correctAnswer + offset;
+            if (newAnswer > 0 && !answers.includes(newAnswer)) {
+                answers.push(newAnswer);
+            }
+        }
+
+        // Shuffle the answers
+        Phaser.Utils.Array.Shuffle(answers);
+
+        // Create answer buttons
+        const buttonWidth = Math.min(width * 0.2, 80);
+        const buttonHeight = Math.min(height * 0.07, 50);
+        const spacing = buttonWidth * 0.2; // Reduce spacing between buttons
+        const buttonElements = [];
+
+        // Calculate starting position 
+        const totalWidth = (buttonWidth * 4) + (spacing * 3);
+        let startX = (width - totalWidth) / 2;
+        const buttonY = height - 60; // Position buttons at bottom with fixed distance
+
+        // Position buttons in a horizontal row at the bottom
+        for (let i = 0; i < answers.length; i++) {
+            const buttonX = startX + (i * (buttonWidth + spacing)) + buttonWidth / 2;
+
+            const button = this.add.rectangle(
+                buttonX,
+                buttonY,
+                buttonWidth,
+                buttonHeight,
+                0x444444,
+                1
+            ).setStrokeStyle(2, 0xffffff, 0.8);
+
+            const buttonText = this.add.text(
+                buttonX,
+                buttonY,
+                answers[i].toString(),
+                {
+                    fontFamily: 'Arial',
+                    fontSize: Math.round(28 * scale),
+                    color: '#ffffff',
+                    align: 'center'
+                }
+            ).setOrigin(0.5);
+
+            // Make button interactive
+            button.setInteractive({ useHandCursor: true });
+
+            // Add hover effect
+            button.on('pointerover', () => {
+                button.setFillStyle(0x666666);
+            });
+
+            button.on('pointerout', () => {
+                button.setFillStyle(0x444444);
+            });
+
+            // Handle button click
+            button.on('pointerdown', () => {
+                // Check if answer is correct
+                if (answers[i] === correctAnswer) {
+                    // Correct answer
+                    this.score += monster.explode();
+                    this.scoreText.setText(`Score: ${this.score}`);
+                    this.soundManager.playSound('correct');
+
+                    // Find and remove the monster from array
+                    const index = this.monsters.indexOf(monster);
+                    if (index > -1) {
+                        this.monsters.splice(index, 1);
+                    }
+
+                    // Clear current target since it's destroyed
+                    this.currentTargetMonster = null;
+
+                    // Close modal and let the update method set a new target
+                    this.closeAnswerModal();
+                } else {
+                    // Wrong answer
+                    this.soundManager.playSound('wrong');
+
+                    // Visual feedback for wrong answer
+                    this.tweens.add({
+                        targets: [button, buttonText],
+                        alpha: 0.3,
+                        duration: 300,
+                        yoyo: true,
+                        repeat: 1
+                    });
+                }
+            });
+
+            buttonElements.push(button, buttonText);
+        }
+
+        // No close button needed anymore
+
+        // Add button elements to the modal elements array
+        this.modalElements.push(...buttonElements);
+    }
+
+    // Helper to close the answer modal
+    closeAnswerModal() {
+        if (this.modalElements && this.modalElements.length > 0) {
+            // Fade out and destroy all elements
+            this.tweens.add({
+                targets: this.modalElements,
+                alpha: 0,
+                duration: 200,
+                onComplete: () => {
+                    this.modalElements.forEach(element => {
+                        if (element && element.destroy) {
+                            element.destroy();
+                        }
+                    });
+                    this.modalElements = [];
+                }
+            });
         }
     }
 } 

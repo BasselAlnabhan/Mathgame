@@ -170,6 +170,15 @@ export default class BootScene extends Phaser.Scene {
             this.load.audio('boom', ['assets/sounds/explosion.wav']);
             this.load.once('filecomplete-audio-boom', () => onSoundLoad('boom'));
 
+            // Load monster specific sounds
+            console.log('Loading pig sound');
+            this.load.audio('pig', ['assets/sounds/pig.wav']);
+            this.load.once('filecomplete-audio-pig', () => onSoundLoad('pig'));
+
+            console.log('Loading wario sound');
+            this.load.audio('wario', ['assets/sounds/wario.wav']);
+            this.load.once('filecomplete-audio-wario', () => onSoundLoad('wario'));
+
             // Load button click sound
             console.log('Loading click sound');
             this.load.audio('click', ['assets/sounds/click.wav']);

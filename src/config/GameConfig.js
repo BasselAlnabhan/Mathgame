@@ -101,5 +101,50 @@ export const UI_STYLES = {
 
 // Game object dimensions and positioning
 export const LAYOUT = {
-  gameOverLine: (height) => height - 150
+  // Calculate game over line position based on screen height and orientation
+  gameOverLine: (height, isLandscape) => {
+    // Use the same percentage for both orientations to ensure consistent timing
+    return height * 0.75; // 75% from the top in both orientations
+  },
+
+  // Calculate numpad sizes based on screen dimensions and orientation
+  numpadSize: (width, height, isLandscape) => {
+    if (isLandscape) {
+      // In landscape: use consistent button sizing scaled to screen
+      return Math.min(width / 20, height / 6);
+    } else {
+      // In portrait: use slightly larger buttons but still scaled proportionally
+      return Math.min(width / 8, height / 12);
+    }
+  },
+
+  // Get monster speed multiplier to ensure consistent speed regardless of orientation
+  speedMultiplier: (isLandscape) => {
+    return isLandscape ? 0.8 : 1; // Reduce speed in landscape to match portrait timing
+  },
+
+  // Calculate UI scales for consistent appearance across devices
+  getUIScale: (width, height) => {
+    // Base scale on the smaller dimension to ensure visibility
+    const baseScale = Math.min(width / 1024, height / 768);
+    // Adjust scale for very small screens to keep UI elements visible
+    return Math.max(0.5, baseScale);
+  },
+
+  // Calculate positions for mobile UI elements
+  mobileLayout: {
+    // Numpad positioning percentages for different orientations
+    numpad: {
+      landscape: {
+        xStart: 0.65, // Start at 65% of screen width
+        yStart: 0.6,  // Start at 60% of screen height
+        spacing: 1.2  // Button spacing multiplier
+      },
+      portrait: {
+        xStart: 0.5,  // Center of screen
+        yStart: 0.8,  // 80% of screen height
+        spacing: 1.2  // Button spacing multiplier
+      }
+    }
+  }
 }; 
