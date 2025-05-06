@@ -39,18 +39,17 @@ export default class Monster extends Phaser.GameObjects.Container {
 
         // Adjust scale for mobile devices
         if (this.isMobile) {
-            // On mobile, make monsters slightly bigger for better visibility
-            scale *= 1.2;
-
-            // In landscape mode on mobile, monsters need to be proportionally smaller
-            // to avoid taking up too much vertical space
-            if (this.isLandscape) {
-                scale *= 0.8;
+            // In portrait mode, make monsters bigger for better visibility and touch targets
+            if (!this.isLandscape) {
+                scale *= 1.3;
+            } else {
+                // In landscape mode on mobile, monsters need to be sized appropriately
+                scale *= 1.1;
             }
         }
 
         // Ensure scale is within reasonable bounds
-        return Math.max(0.5, Math.min(1.5, scale));
+        return Math.max(0.6, Math.min(1.6, scale));
     }
 
     createSprite() {
@@ -68,10 +67,13 @@ export default class Monster extends Phaser.GameObjects.Container {
             ...UI_STYLES.problemText,
             // Make font size more readable on mobile
             fontSize: this.isMobile ?
-                Math.max(46, UI_STYLES.problemText.fontSize) :
+                Math.max(50, UI_STYLES.problemText.fontSize) :
                 UI_STYLES.problemText.fontSize,
             // Enhance contrast on the text
-            strokeThickness: this.isMobile ? 6 : UI_STYLES.problemText.strokeThickness
+            strokeThickness: this.isMobile ? 6 : UI_STYLES.problemText.strokeThickness,
+            // Add background for better readability on mobile
+            backgroundColor: this.isMobile ? '#00000088' : null,
+            padding: this.isMobile ? { x: 8, y: 4 } : null
         };
 
         // Add text with math problem
@@ -79,7 +81,7 @@ export default class Monster extends Phaser.GameObjects.Container {
             .setOrigin(0.5, 0);
 
         // Position the text above the monster with some extra spacing on mobile
-        const spacing = this.isMobile ? 10 : 0;
+        const spacing = this.isMobile ? 15 : 5;
         this.problemText.y = -this.sprite.height / 2 - this.problemText.height / 2 - spacing;
 
         // Add to container
@@ -102,35 +104,67 @@ export default class Monster extends Phaser.GameObjects.Container {
 
     // Make the monster interactive for direct tapping
     setInteractive(config = {}) {
-        // Make the entire container interactive
+        // Make the entire container interactive with a larger hit area on mobile
+        const padding = this.isMobile ? 20 : 0;
+
         super.setInteractive({
             hitArea: new Phaser.Geom.Rectangle(
-                -this.sprite.width / 2,
-                -this.sprite.height / 2 - this.problemText.height,
-                Math.max(this.sprite.width, this.problemText.width),
-                this.sprite.height + this.problemText.height
+                -this.sprite.width / 2 - padding,
+                -this.sprite.height / 2 - this.problemText.height - padding,
+                Math.max(this.sprite.width, this.problemText.width) + (padding * 2),
+                this.sprite.height + this.problemText.height + (padding * 2)
             ),
             hitAreaCallback: Phaser.Geom.Rectangle.Contains,
             ...config
         });
 
-        // Add a subtle highlight effect on tap/hover for better feedback
+        // Add improved visual feedback effects
         this.on('pointerover', this.onPointerOver, this);
         this.on('pointerout', this.onPointerOut, this);
+
+        // Add touch-specific effects for mobile
+        if (this.isMobile) {
+            this.on('pointerdown', this.onPointerDown, this);
+            this.on('pointerup', this.onPointerUp, this);
+        }
 
         return this;
     }
 
     onPointerOver() {
         // Visual indication that the monster is interactive
-        this.sprite.setTint(0xccccff);
-        this.problemText.setTint(0xccccff);
+        if (this.isMobile) {
+            // More pronounced effect for mobile
+            this.sprite.setTint(0xaaddff);
+            this.problemText.setTint(0xaaddff);
+            this.scale = this.scaleFactor * 1.05;
+        } else {
+            // Subtle effect for desktop
+            this.sprite.setTint(0xccccff);
+            this.problemText.setTint(0xccccff);
+        }
     }
 
     onPointerOut() {
         // Restore original appearance
         this.sprite.clearTint();
         this.problemText.clearTint();
+        this.scale = this.scaleFactor;
+    }
+
+    // Mobile-specific touch feedback
+    onPointerDown() {
+        if (this.isMobile) {
+            this.sprite.setTint(0x88aaff);
+            this.scale = this.scaleFactor * 0.95;
+        }
+    }
+
+    onPointerUp() {
+        if (this.isMobile) {
+            this.sprite.clearTint();
+            this.scale = this.scaleFactor;
+        }
     }
 
     update() {
@@ -171,10 +205,42 @@ export default class Monster extends Phaser.GameObjects.Container {
     }
 
     explode() {
+        // Enhanced explosion effect for mobile
+        const explosionScale = this.isMobile ? this.scaleFactor * 1.3 : this.scaleFactor;
+
         // Create explosion at the position of the monster
         const explosion = this.scene.add.sprite(this.x, this.y, 'explosion')
             .play('explosion_normal')
-            .setScale(this.scaleFactor); // Scale explosion to match monster
+            .setScale(explosionScale);
+
+        // Add extra visual effects for mobile
+        if (this.isMobile) {
+            // Add particle effect for more satisfying explosion
+            if (this.scene.add.particles) {
+                try {
+                    const particles = this.scene.add.particles(this.x, this.y, 'explosion', {
+                        scale: { start: 0.2, end: 0 },
+                        speed: { min: 50, max: 100 },
+                        lifespan: 800,
+                        blendMode: 'ADD',
+                        quantity: 10
+                    });
+
+                    // Auto-destroy particles after animation completes
+                    this.scene.time.delayedCall(800, () => {
+                        if (particles && particles.scene) {
+                            particles.destroy();
+                        }
+                    });
+                } catch (error) {
+                    // Fail silently - particles are just a visual enhancement
+                    console.log('Particle effect not available');
+                }
+            }
+
+            // Add camera shake for impact
+            this.scene.cameras.main.shake(200, 0.01);
+        }
 
         // Play explosion sound (keep using the explosion sound since we're exploding)
         if (this.scene.soundManager) {

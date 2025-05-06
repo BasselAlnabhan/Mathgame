@@ -64,31 +64,48 @@ export const SOUND_CONFIG = {
 export const UI_STYLES = {
   title: {
     fontFamily: 'Arial',
-    fontSize: 48,
+    fontSize: 56,
     color: '#ffffff',
     stroke: '#000000',
-    strokeThickness: 6
+    strokeThickness: 8,
+    fontStyle: 'bold'
   },
   subtitle: {
     fontFamily: 'Arial',
-    fontSize: 24,
+    fontSize: 28,
     color: '#ffffff',
     stroke: '#000000',
-    strokeThickness: 4,
-    align: 'center'
+    strokeThickness: 5,
+    align: 'center',
+    shadow: {
+      offsetX: 2,
+      offsetY: 2,
+      color: '#000000',
+      blur: 5,
+      fill: true
+    }
   },
   score: {
     fontFamily: 'Arial',
-    fontSize: 24,
+    fontSize: 28,
     color: '#ffffff',
     stroke: '#000000',
-    strokeThickness: 2
+    strokeThickness: 3,
+    fontStyle: 'bold'
   },
   button: {
     fontFamily: 'Arial',
-    fontSize: 36,
+    fontSize: 42,
     color: '#ffffff',
-    padding: { left: 30, right: 30, top: 20, bottom: 20 }
+    fontStyle: 'bold',
+    padding: { left: 40, right: 40, top: 25, bottom: 25 },
+    shadow: {
+      offsetX: 3,
+      offsetY: 3,
+      color: '#000000',
+      blur: 5,
+      fill: true
+    }
   },
   problemText: {
     fontFamily: 'Arial',

@@ -85,15 +85,34 @@ export default class MenuScene extends Phaser.Scene {
         const height = this.cameras.main.height;
         const scale = Math.min(width / 1024, height / 768);
 
+        // Add a semi-transparent overlay to improve text contrast
+        this.add.rectangle(
+            width / 2,
+            height / 2,
+            width * 0.8,
+            height * 0.9,
+            0x000000,
+            0.4
+        ).setOrigin(0.5);
+
         // Layout depends on orientation
         if (this.isLandscape) {
             // Landscape layout
-            // Add title
-            this.uiFactory.createTitle(
+            // Add title with glow effect
+            const title = this.uiFactory.createTitle(
                 width / 2,
                 height * 0.2,
                 'MATH MONSTER GAME'
             );
+
+            // Add shine/glow effect to title
+            this.tweens.add({
+                targets: title,
+                alpha: 0.8,
+                duration: 1500,
+                yoyo: true,
+                repeat: -1
+            });
 
             // Add instructions
             this.uiFactory.createSubtitle(
@@ -102,20 +121,31 @@ export default class MenuScene extends Phaser.Scene {
                 'Solve math problems to defeat monsters\nbefore they reach the bottom of the screen!'
             );
 
-            // Add play button
+            // Add play button - bigger with animation
             const playButton = this.uiFactory.createButton(
                 width / 2,
                 height * 0.55,
-                'PLAY'
+                'PLAY',
+                '#0066cc',
+                '#3399ff'
             ).on('pointerdown', () => {
                 this.soundManager.playSound('click');
                 this.startGame();
             });
 
+            // Add scale animation to play button
+            this.tweens.add({
+                targets: playButton,
+                scale: 1.05,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1
+            });
+
             // Add difficulty selector
             const difficultySelector = this.uiFactory.createDifficultySelector(
                 width / 2,
-                height * 0.7,
+                height * 0.75,
                 ['Easy', 'Medium', 'Hard'],
                 (difficulty) => {
                     this.difficulty = difficulty;
@@ -126,12 +156,21 @@ export default class MenuScene extends Phaser.Scene {
             );
         } else {
             // Portrait layout - adjust vertical spacing
-            // Add title
-            this.uiFactory.createTitle(
+            // Add title with glow effect
+            const title = this.uiFactory.createTitle(
                 width / 2,
                 height * 0.15,
                 'MATH MONSTER GAME'
             );
+
+            // Add shine/glow effect to title
+            this.tweens.add({
+                targets: title,
+                alpha: 0.8,
+                duration: 1500,
+                yoyo: true,
+                repeat: -1
+            });
 
             // Add instructions - shorter in portrait mode
             this.uiFactory.createSubtitle(
@@ -152,10 +191,23 @@ export default class MenuScene extends Phaser.Scene {
                 this.startGame();
             });
 
+            // Add scale animation to play button
+            this.tweens.add({
+                targets: playButton,
+                scale: 1.05,
+                duration: 1000,
+                yoyo: true,
+                repeat: -1
+            });
+
             // Adjust button size for better touch targets on mobile
             if (this.isMobile) {
+                // Make play button even bigger on mobile
                 playButton.setFontSize(playButton.style.fontSize * 1.3);
-                playButton.setStyle({ padding: { left: 40, right: 40, top: 30, bottom: 30 } });
+                playButton.setStyle({
+                    padding: { left: 50, right: 50, top: 35, bottom: 35 },
+                    backgroundColor: '#0077dd'
+                });
             }
 
             // Add difficulty selector - stacked vertically in portrait mode
@@ -164,15 +216,15 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     createVerticalDifficultySelector(x, y) {
-        // Create title text
+        // Create title text with better visibility
         const title = this.uiFactory.createSubtitle(
-            x, y - 40,
+            x, y - 50,
             'Select Difficulty:'
         );
 
         const difficulties = ['Easy', 'Medium', 'Hard'];
         const buttons = [];
-        const buttonSpacing = 70;
+        const buttonSpacing = this.isMobile ? 90 : 70; // Increase spacing on mobile
         const scale = Math.min(this.cameras.main.width / 1024, this.cameras.main.height / 768);
 
         // Create a button for each difficulty level, stacked vertically
@@ -180,35 +232,67 @@ export default class MenuScene extends Phaser.Scene {
             const isSelected = diff === this.difficulty;
             const buttonY = y + (index * buttonSpacing);
 
+            // Enhanced button style
+            const buttonColor = isSelected ? '#555555' : '#333333';
+            const borderColor = isSelected ? '#ffffff' : '#aaaaaa';
+            const hoverColor = isSelected ? '#666666' : '#444444';
+
+            // Create button background with border for better visibility
+            const buttonBg = this.add.rectangle(
+                x,
+                buttonY,
+                this.isMobile ? 180 : 140,
+                this.isMobile ? 60 : 45,
+                Phaser.Display.Color.HexStringToColor(buttonColor).color
+            ).setOrigin(0.5);
+
+            // Add border
+            buttonBg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(borderColor).color);
+
+            // Make background interactive
+            buttonBg.setInteractive({ useHandCursor: true });
+
+            // Add hover effect
+            buttonBg.on('pointerover', () => {
+                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor(hoverColor).color);
+            });
+
+            buttonBg.on('pointerout', () => {
+                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor(buttonColor).color);
+            });
+
             const button = this.add.text(
                 x,
                 buttonY,
                 diff,
                 {
                     fontFamily: 'Arial',
-                    fontSize: 28 * scale,
+                    fontSize: this.isMobile ? Math.round(32 * scale) : Math.round(28 * scale),
                     color: '#ffffff',
-                    backgroundColor: isSelected ? '#555555' : '#333333',
-                    padding: {
-                        left: Math.round(20 * scale),
-                        right: Math.round(20 * scale),
-                        top: Math.round(10 * scale),
-                        bottom: Math.round(10 * scale)
-                    }
+                    fontStyle: 'bold',
+                    stroke: '#000000',
+                    strokeThickness: 2
                 }
-            )
-                .setOrigin(0.5)
-                .setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => {
-                    // Update button styles
-                    buttons.forEach(btn => btn.setStyle({ backgroundColor: '#333333' }));
-                    button.setStyle({ backgroundColor: '#555555' });
-                    this.difficulty = diff;
-                    this.soundManager.playSound('click');
-                    console.log('Difficulty set to:', diff);
+            ).setOrigin(0.5);
+
+            // Handle click event on background
+            buttonBg.on('pointerdown', () => {
+                // Update all buttons
+                buttons.forEach((btn, idx) => {
+                    btn.bg.setFillStyle(Phaser.Display.Color.HexStringToColor('#333333').color);
+                    btn.bg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor('#aaaaaa').color);
                 });
 
-            buttons.push(button);
+                // Highlight selected button
+                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor('#555555').color);
+                buttonBg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor('#ffffff').color);
+
+                this.difficulty = diff;
+                this.soundManager.playSound('click');
+                console.log('Difficulty set to:', diff);
+            });
+
+            buttons.push({ text: button, bg: buttonBg });
         });
     }
 
