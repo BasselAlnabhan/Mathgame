@@ -2,8 +2,26 @@ import Phaser from 'phaser';
 import { UI_STYLES, POINTS } from '../config/GameConfig';
 
 export default class Monster extends Phaser.GameObjects.Container {
-    constructor(scene, x, y, monsterType, speed, mathProblem, result) {
-        super(scene, x, y);
+    constructor(scene, monsterType, mathProblem, result, speed, isLandscape) {
+        // Calculate x position randomly with spacing to avoid overlaps
+        const width = scene.cameras.main.width;
+        let x;
+        let attempts = 0;
+        const minSpacing = 120; // Minimum pixel distance between monsters
+
+        do {
+            x = Phaser.Math.Between(100, width - 100);
+            attempts++;
+
+            // Break after 5 attempts to avoid infinite loop
+            if (attempts > 5) break;
+
+        } while (scene.isPositionTooCloseToExistingMonster &&
+            scene.isPositionTooCloseToExistingMonster(x, minSpacing));
+
+        // Create the monster above the screen
+        super(scene, x, -50);
+
         this.scene = scene;
         this.speed = speed;
         this.mathProblem = mathProblem;
@@ -13,8 +31,8 @@ export default class Monster extends Phaser.GameObjects.Container {
         // Determine if we're on a mobile device
         this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // Determine if we're in landscape mode
-        this.isLandscape = window.innerWidth > window.innerHeight;
+        // Use provided landscape mode flag or calculate it
+        this.isLandscape = isLandscape !== undefined ? isLandscape : window.innerWidth > window.innerHeight;
 
         // Create a scale factor based on screen size and orientation
         this.scaleFactor = this.getScaleFactor();
@@ -28,6 +46,19 @@ export default class Monster extends Phaser.GameObjects.Container {
         // Add to scene
         scene.add.existing(this);
         this.setupPhysics();
+
+        // For mobile or small screens, make the monster tappable
+        if (this.isMobile || window.innerWidth < 768) {
+            this.setInteractive({ useHandCursor: true });
+
+            // If the scene has a handler for monster tap, connect it
+            if (scene.handleMonsterTap) {
+                this.on('pointerdown', () => scene.handleMonsterTap(this));
+            }
+        }
+
+        // Play monster sound
+        this.playSound();
     }
 
     getScaleFactor() {

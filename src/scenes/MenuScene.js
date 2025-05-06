@@ -1,13 +1,20 @@
 import Phaser from 'phaser';
 import UIFactory from '../managers/UIFactory';
 import SoundManager from '../managers/SoundManager';
+import { loadCustomRules } from '../config/GameConfig';
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MenuScene' });
-        this.difficulty = 'Easy'; // Default difficulty
         this.isLandscape = true;
         this.isMobile = false;
+        // Check if custom rules exist and use them by default
+        if (loadCustomRules()) {
+            this.hasCustomRules = true;
+            this.difficulty = 'Custom';
+        } else {
+            this.difficulty = 'Medium'; // Default difficulty if no custom rules
+        }
     }
 
     create() {
@@ -142,18 +149,17 @@ export default class MenuScene extends Phaser.Scene {
                 repeat: -1
             });
 
-            // Add difficulty selector
-            const difficultySelector = this.uiFactory.createDifficultySelector(
+            // Add settings button
+            const settingsButton = this.uiFactory.createButton(
                 width / 2,
                 height * 0.75,
-                ['Easy', 'Medium', 'Hard'],
-                (difficulty) => {
-                    this.difficulty = difficulty;
-                    this.soundManager.playSound('click');
-                    console.log('Difficulty set to:', difficulty);
-                },
-                this.difficulty // Use current difficulty
-            );
+                'SETTINGS',
+                '#555555',
+                '#777777'
+            ).on('pointerdown', () => {
+                this.soundManager.playSound('click');
+                this.openSettings();
+            });
         } else {
             // Portrait layout - adjust vertical spacing
             // Add title with glow effect
@@ -182,7 +188,7 @@ export default class MenuScene extends Phaser.Scene {
             // Add play button - bigger in portrait mode
             const playButton = this.uiFactory.createButton(
                 width / 2,
-                height * 0.4,
+                height * 0.45,
                 'PLAY',
                 '#0066cc',
                 '#3399ff'
@@ -210,90 +216,28 @@ export default class MenuScene extends Phaser.Scene {
                 });
             }
 
-            // Add difficulty selector - stacked vertically in portrait mode
-            this.createVerticalDifficultySelector(width / 2, height * 0.55);
+            // Add settings button
+            const settingsButton = this.uiFactory.createButton(
+                width / 2,
+                height * 0.65,
+                'SETTINGS',
+                '#555555',
+                '#777777'
+            ).on('pointerdown', () => {
+                this.soundManager.playSound('click');
+                this.openSettings();
+            });
         }
     }
 
-    createVerticalDifficultySelector(x, y) {
-        // Create title text with better visibility
-        const title = this.uiFactory.createSubtitle(
-            x, y - 50,
-            'Select Difficulty:'
-        );
+    openSettings() {
+        console.log('Opening settings scene');
 
-        const difficulties = ['Easy', 'Medium', 'Hard'];
-        const buttons = [];
-        const buttonSpacing = this.isMobile ? 90 : 70; // Increase spacing on mobile
-        const scale = Math.min(this.cameras.main.width / 1024, this.cameras.main.height / 768);
+        // Clean up event listeners
+        window.removeEventListener('resize', this.handleResize.bind(this));
 
-        // Create a button for each difficulty level, stacked vertically
-        difficulties.forEach((diff, index) => {
-            const isSelected = diff === this.difficulty;
-            const buttonY = y + (index * buttonSpacing);
-
-            // Enhanced button style
-            const buttonColor = isSelected ? '#555555' : '#333333';
-            const borderColor = isSelected ? '#ffffff' : '#aaaaaa';
-            const hoverColor = isSelected ? '#666666' : '#444444';
-
-            // Create button background with border for better visibility
-            const buttonBg = this.add.rectangle(
-                x,
-                buttonY,
-                this.isMobile ? 180 : 140,
-                this.isMobile ? 60 : 45,
-                Phaser.Display.Color.HexStringToColor(buttonColor).color
-            ).setOrigin(0.5);
-
-            // Add border
-            buttonBg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(borderColor).color);
-
-            // Make background interactive
-            buttonBg.setInteractive({ useHandCursor: true });
-
-            // Add hover effect
-            buttonBg.on('pointerover', () => {
-                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor(hoverColor).color);
-            });
-
-            buttonBg.on('pointerout', () => {
-                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor(buttonColor).color);
-            });
-
-            const button = this.add.text(
-                x,
-                buttonY,
-                diff,
-                {
-                    fontFamily: 'Arial',
-                    fontSize: this.isMobile ? Math.round(32 * scale) : Math.round(28 * scale),
-                    color: '#ffffff',
-                    fontStyle: 'bold',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            ).setOrigin(0.5);
-
-            // Handle click event on background
-            buttonBg.on('pointerdown', () => {
-                // Update all buttons
-                buttons.forEach((btn, idx) => {
-                    btn.bg.setFillStyle(Phaser.Display.Color.HexStringToColor('#333333').color);
-                    btn.bg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor('#aaaaaa').color);
-                });
-
-                // Highlight selected button
-                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor('#555555').color);
-                buttonBg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor('#ffffff').color);
-
-                this.difficulty = diff;
-                this.soundManager.playSound('click');
-                console.log('Difficulty set to:', diff);
-            });
-
-            buttons.push({ text: button, bg: buttonBg });
-        });
+        // Start settings scene
+        this.scene.start('SettingsScene');
     }
 
     startGame() {
