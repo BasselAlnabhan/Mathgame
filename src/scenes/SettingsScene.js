@@ -3,13 +3,70 @@ import UIFactory from '../managers/UIFactory';
 import SoundManager from '../managers/SoundManager';
 import { GAME_RULES_PRESETS, saveCustomRules, loadCustomRules } from '../config/GameConfig';
 
+// Improved logical presets with more comprehensive settings
+const LOGICAL_PRESETS = {
+    Easy: { 
+        speedMin: 1, 
+        speedMax: 50, 
+        speedInc: 1,
+        speedEvery: 10,
+        speedStartDelay: 5,
+        monstersMin: 1, 
+        monstersMax: 5,
+        monstersInc: 1,
+        monstersEvery: 20,
+        monstersStartDelay: 5,
+        monstersToUse: ['monster1', 'monster2'],
+        lessionType: 2, // Addition
+        lessionMinValue: 1,
+        lessionMaxValue: 10,
+        arithmeticDifficulty: 'Easy Addition'
+    },
+    Medium: { 
+        speedMin: 30, 
+        speedMax: 100, 
+        speedInc: 2,
+        speedEvery: 10,
+        speedStartDelay: 3,
+        monstersMin: 3, 
+        monstersMax: 10,
+        monstersInc: 1,
+        monstersEvery: 15,
+        monstersStartDelay: 3,
+        monstersToUse: ['monster1', 'monster2', 'badpig'],
+        lessionType: 2, // Addition
+        lessionMinValue: 1,
+        lessionMaxValue: 20,
+        arithmeticDifficulty: 'Medium Addition'
+    },
+    Hard: { 
+        speedMin: 50, 
+        speedMax: 150, 
+        speedInc: 3,
+        speedEvery: 8,
+        speedStartDelay: 2,
+        monstersMin: 5, 
+        monstersMax: 15,
+        monstersInc: 2,
+        monstersEvery: 10,
+        monstersStartDelay: 2,
+        monstersToUse: ['monster1', 'monster2', 'badpig'],
+        lessionType: 1, // Multiply
+        lessionMinValue: 2,
+        lessionMaxValue: 12,
+        arithmeticDifficulty: 'Hard Multiplication'
+    }
+};
+
 export default class SettingsScene extends Phaser.Scene {
     constructor() {
         super({ key: 'SettingsScene' });
         this.isLandscape = true;
         this.isMobile = false;
-        this.currentRules = loadCustomRules() || { ...GAME_RULES_PRESETS.Medium };
+        this.currentRules = loadCustomRules() || { ...LOGICAL_PRESETS.Medium };
         this.activeTab = 'speed';
+        this.currentPreset = this.detectCurrentPreset();
+        this.presetButtons = {};
 
         // Store bound methods to properly remove event listeners
         this.handleResizeBound = this.handleResize.bind(this);
@@ -71,13 +128,19 @@ export default class SettingsScene extends Phaser.Scene {
     }
 
     cleanupUI() {
-        // Destroy all UI elements
-        this.children.list.forEach(child => {
-            if (child.type === 'Text' || child.type === 'Image' || child.type === 'Rectangle') {
-                child.destroy();
+        // More thorough cleanup - first destroy all game objects
+        this.children.each(child => {
+            if (child) {
+                child.destroy(true);
             }
         });
 
+        // Clear any remaining containers and complex objects
+        this.children.removeAll(true);
+        
+        // Reset any cached references
+        this.presetButtons = {};
+        
         // Re-add background
         this.setupBackground();
     }
@@ -93,11 +156,6 @@ export default class SettingsScene extends Phaser.Scene {
         const height = this.cameras.main.height;
         const scale = Math.min(width / 1024, height / 768);
 
-        // Adjust scale for mobile devices
-        const mobileScale = this.isMobile ?
-            (this.isLandscape ? 1.1 * scale : 1.3 * scale) :
-            scale;
-
         // Add a semi-transparent overlay for better readability
         this.add.rectangle(
             width / 2,
@@ -105,36 +163,35 @@ export default class SettingsScene extends Phaser.Scene {
             width * 0.9,
             height * 0.9,
             0x000000,
-            0.6
+            0.7
         ).setOrigin(0.5);
 
-        // Add title
+        // Add title with modern styling
         const titleSize = this.isMobile && !this.isLandscape ? 40 : 56;
-        const title = this.add.text(
+        this.add.text(
             width / 2,
-            this.isMobile ? height * 0.08 : height * 0.1,
+            this.isMobile ? height * 0.06 : height * 0.08,
             'GAME SETTINGS',
             {
                 fontFamily: 'Arial',
-                fontSize: titleSize * mobileScale,
+                fontSize: titleSize,
                 color: '#ffffff',
-                stroke: '#000000',
-                strokeThickness: 8,
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                align: 'center'
             }
         ).setOrigin(0.5);
 
-        // Create tabs to manage different rule sections
+        // Create tabs with original tab names
         this.createTabs(
             width / 2,
-            this.isMobile ? height * 0.17 : height * 0.2,
-            ['Speed', 'Monsters', 'Math']
+            this.isMobile ? height * 0.14 : height * 0.16,
+            ['Speed', 'Monsters', 'Math', 'Arithmetic']
         );
 
-        // Create settings panel - adjust size and position for mobile
+        // Adjust panel position to match new tab position
         const panelWidth = this.isMobile ? width * 0.95 : width * 0.8;
         const panelHeight = this.isMobile ? height * 0.55 : height * 0.5;
-        const panelY = this.isMobile ? height * 0.28 : height * 0.3;
+        const panelY = this.isMobile ? height * 0.25 : height * 0.26;
 
         this.createSettingsPanel(
             width / 2,
@@ -143,17 +200,31 @@ export default class SettingsScene extends Phaser.Scene {
             panelHeight
         );
 
-        // Add preset buttons at the bottom
+        // Add preset title
+        const presetTitleY = this.isMobile ? height * 0.67 : height * 0.7;
+        this.add.text(
+            width / 2,
+            presetTitleY,
+            'Presets:',
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(24 * scale),
+                color: '#ffffff',
+                fontStyle: 'bold'
+            }
+        ).setOrigin(0.5, 0.5);
+
+        // Add preset buttons with modern design
         this.createPresetButtons(
             width / 2,
-            this.isMobile ? height * 0.72 : height * 0.75
+            this.isMobile ? height * 0.72 : height * 0.75,
+            ['Easy', 'Medium', 'Hard', 'Custom']
         );
 
-        // Add save and back buttons - position them for better mobile access
+        // Add save and back buttons with improved styling
         const buttonSize = this.isMobile ? 1.2 : 1;
         const buttonY = this.isMobile ? height * 0.85 : height * 0.85;
 
-        // On mobile portrait, stack buttons vertically if needed
         const saveButtonX = this.isMobile && !this.isLandscape ?
             width / 2 :
             width * 0.6;
@@ -166,71 +237,15 @@ export default class SettingsScene extends Phaser.Scene {
             height * 0.93 :
             buttonY;
 
-        const saveButton = this.add.text(
-            saveButtonX,
-            buttonY,
-            'SAVE',
-            {
-                fontFamily: 'Arial',
-                fontSize: Math.round(36 * buttonSize * mobileScale),
-                color: '#ffffff',
-                backgroundColor: '#00aa00',
-                padding: {
-                    left: 40 * buttonSize,
-                    right: 40 * buttonSize,
-                    top: 25 * buttonSize,
-                    bottom: 25 * buttonSize
-                },
-                fontStyle: 'bold',
-                shadow: {
-                    offsetX: 2,
-                    offsetY: 2,
-                    color: '#000000',
-                    blur: 5,
-                    fill: true
-                }
-            }
-        ).setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => saveButton.setStyle({ backgroundColor: '#00cc00' }))
-            .on('pointerout', () => saveButton.setStyle({ backgroundColor: '#00aa00' }))
-            .on('pointerdown', () => {
-                this.soundManager.playSound('click');
-                this.saveSettings();
-            });
+        this.createButton('SAVE', saveButtonX, buttonY, '#00aa00', '#00cc00', () => {
+            this.soundManager.playSound('click');
+            this.saveSettings();
+        });
 
-        const backButton = this.add.text(
-            backButtonX,
-            backButtonY,
-            'BACK',
-            {
-                fontFamily: 'Arial',
-                fontSize: Math.round(36 * buttonSize * mobileScale),
-                color: '#ffffff',
-                backgroundColor: '#aa0000',
-                padding: {
-                    left: 40 * buttonSize,
-                    right: 40 * buttonSize,
-                    top: 25 * buttonSize,
-                    bottom: 25 * buttonSize
-                },
-                fontStyle: 'bold',
-                shadow: {
-                    offsetX: 2,
-                    offsetY: 2,
-                    color: '#000000',
-                    blur: 5,
-                    fill: true
-                }
-            }
-        ).setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => backButton.setStyle({ backgroundColor: '#cc0000' }))
-            .on('pointerout', () => backButton.setStyle({ backgroundColor: '#aa0000' }))
-            .on('pointerdown', () => {
-                this.soundManager.playSound('click');
-                this.returnToMenu();
-            });
+        this.createButton('BACK', backButtonX, backButtonY, '#aa0000', '#cc0000', () => {
+            this.soundManager.playSound('click');
+            this.returnToMenu();
+        });
     }
 
     createTabs(x, y, tabNames) {
@@ -252,6 +267,9 @@ export default class SettingsScene extends Phaser.Scene {
 
         const startX = x - ((tabNames.length * tabWidth) / 2) + (tabWidth / 2);
 
+        // Highest z-index/depth for tabs
+        const TAB_DEPTH = 100;
+
         tabNames.forEach((tabName, index) => {
             // Keep tab key logic simple - use lowercase tab name
             const tabKey = tabName.toLowerCase();
@@ -267,6 +285,9 @@ export default class SettingsScene extends Phaser.Scene {
                 1
             ).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
+            // Explicitly set a high depth
+            tabBackground.setDepth(TAB_DEPTH);
+
             // Add border to make tabs more visible
             tabBackground.setStrokeStyle(2, isActive ? 0xffffff : 0x666666);
 
@@ -281,6 +302,9 @@ export default class SettingsScene extends Phaser.Scene {
                     fontStyle: 'bold'
                 }
             ).setOrigin(0.5);
+            
+            // Set same high depth for text
+            tabText.setDepth(TAB_DEPTH);
 
             // Add hover/active states
             tabBackground.on('pointerover', () => {
@@ -312,6 +336,9 @@ export default class SettingsScene extends Phaser.Scene {
         const panel = this.add.rectangle(x, y, width, height, 0x222222, 0.8)
             .setOrigin(0.5)
             .setStrokeStyle(2, 0x3366cc);
+        
+        // Set panel depth below tabs but above background
+        panel.setDepth(10);
 
         // Add rounded corners using a mask if not on mobile (performance consideration)
         if (!this.isMobile) {
@@ -345,6 +372,9 @@ export default class SettingsScene extends Phaser.Scene {
                 break;
             case 'lesson':
                 this.createLessonSettings(x, contentY, contentWidth, height * 0.7);
+                break;
+            case 'arithmetic':
+                this.createArithmeticSettings(x, contentY, contentWidth, height * 0.7);
                 break;
         }
     }
@@ -561,110 +591,157 @@ export default class SettingsScene extends Phaser.Scene {
     }
 
     createSettingsFields(x, y, fields) {
-        const scale = Math.min(this.cameras.main.width / 1024, this.cameras.main.height / 768);
-        const mobileScale = this.isMobile ? scale * 1.2 : scale;
+        const width = this.cameras.main.width;
+        const scale = Math.min(width / 1024, this.cameras.main.height / 768);
+        const fontSize = Math.round(this.isMobile ? 18 : 16);
+        const spacing = this.isMobile ? 50 : 40;
 
-        const fontSize = Math.round(this.isMobile ? 22 : 18);
-        const sliderHeight = this.isMobile ? 16 : 10;
-        const handleSize = this.isMobile ? 22 : 15;
-        const spacing = this.isMobile ? 60 : 50;
+        // Set depths for different UI elements
+        const SETTINGS_BASE_DEPTH = 20;
 
-        // Adjust layout for mobile portrait mode
-        const labelOffset = this.isMobile && !this.isLandscape ? 150 : 200;
-        const valueOffset = this.isMobile && !this.isLandscape ? 120 : 200;
+        // Adjust layout based on orientation and device type
+        const labelWidth = this.isMobile && !this.isLandscape ? width * 0.8 : width * 0.4;
+        
+        // Calculate positions based on available space
+        const availableWidth = this.cameras.main.width * 0.7;
+        
+        // Right-align labels
+        const labelX = this.isMobile && !this.isLandscape ? 
+            x - availableWidth/4 : 
+            x - availableWidth/3;
+        
+        // Button group position (where slider used to be)
+        const buttonGroupX = this.isMobile && !this.isLandscape ? x : x;
 
         fields.forEach((field, index) => {
             const yPos = y + (index * spacing);
 
-            // Add label
-            this.add.text(x - labelOffset, yPos, field.label, {
-                fontFamily: 'Arial',
-                fontSize: fontSize * mobileScale,
-                color: '#ffffff',
-                fontStyle: 'bold'
-            }).setOrigin(0, 0.5);
+            // Add right-aligned label with contrasting background
+            const label = this.add.text(
+                labelX, 
+                yPos, 
+                field.label, 
+                {
+                    fontFamily: 'Arial',
+                    fontSize: fontSize * scale,
+                    color: '#ffffff',
+                    fontStyle: 'bold',
+                    backgroundColor: '#333333',
+                    padding: { x: 6, y: 3 }
+                }
+            );
+            label.setOrigin(1, 0.5).setDepth(SETTINGS_BASE_DEPTH);
 
-            // Add slider background with rounded corners
-            const sliderWidth = this.isMobile && !this.isLandscape ? 200 : 300;
-            const sliderBg = this.add.rectangle(x, yPos, sliderWidth, sliderHeight, 0x666666)
-                .setOrigin(0.5);
-
-            // Add rounded corners for slider background
-            sliderBg.setStrokeStyle(1, 0x888888);
-
-            // Calculate slider position based on current value
+            // Get current value
             const currentValue = this.currentRules[field.key] || field.min;
-            const normalizedValue = (currentValue - field.min) / (field.max - field.min);
-            const sliderMinX = x - sliderWidth / 2;
-            const sliderMaxX = x + sliderWidth / 2;
-            const sliderX = sliderMinX + (normalizedValue * sliderWidth);
-
-            // Add slider track (filled portion)
-            const trackWidth = normalizedValue * sliderWidth;
-            const track = this.add.rectangle(
-                sliderMinX + trackWidth / 2,
-                yPos,
-                trackWidth,
-                sliderHeight,
-                0x3399ff
-            ).setOrigin(0.5);
-
-            // Add slider handle
-            const handle = this.add.circle(sliderX, yPos, handleSize, 0x3366cc)
-                .setInteractive({ draggable: true, useHandCursor: true });
-
-            // Enhance handle appearance
-            handle.setStrokeStyle(2, 0xffffff);
-
-            // Add value text
-            const valueText = this.add.text(x + valueOffset, yPos, currentValue.toString(), {
-                fontFamily: 'Arial',
-                fontSize: fontSize * mobileScale,
-                color: '#ffffff'
-            }).setOrigin(0, 0.5);
-
-            // Make the slider more interactive - allow clicking on the slider bar
-            sliderBg.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer) => {
-                // Calculate the new value based on click position
-                const newX = Phaser.Math.Clamp(pointer.x, sliderMinX, sliderMaxX);
-                const newNormalizedValue = (newX - sliderMinX) / sliderWidth;
-                const newValue = Math.round(field.min + newNormalizedValue * (field.max - field.min));
-
-                // Update UI
-                handle.x = newX;
-                track.width = newX - sliderMinX;
-                track.x = sliderMinX + track.width / 2;
-                valueText.setText(newValue.toString());
-
-                // Update data
-                this.currentRules[field.key] = newValue;
-
-                // Play a click sound
-                this.soundManager.playSound('click');
-            });
-
-            // Enhanced slider drag logic
-            handle.on('drag', (pointer, dragX) => {
-                const newX = Phaser.Math.Clamp(dragX, sliderMinX, sliderMaxX);
-                handle.x = newX;
-
-                // Update track width
-                track.width = newX - sliderMinX;
-                track.x = sliderMinX + track.width / 2;
-
-                const newNormalizedValue = (newX - sliderMinX) / sliderWidth;
-                const newValue = Math.round(field.min + newNormalizedValue * (field.max - field.min));
-                valueText.setText(newValue.toString());
-
-                // Update current rules
-                this.currentRules[field.key] = newValue;
+            
+            // Generate discrete button values
+            const range = field.max - field.min;
+            const numButtons = Math.min(5, range); // Max 5 buttons 
+            const buttonValues = [];
+            
+            // Determine values for buttons
+            if (range <= numButtons) {
+                // If range is small, show all values
+                for (let i = 0; i <= range; i++) {
+                    buttonValues.push(field.min + i);
+                }
+            } else {
+                // Otherwise calculate reasonable steps
+                for (let i = 0; i < numButtons; i++) {
+                    const value = Math.round(field.min + (range * i / (numButtons - 1)));
+                    buttonValues.push(value);
+                }
+                
+                // Make sure max value is included
+                if (buttonValues[buttonValues.length - 1] !== field.max) {
+                    buttonValues[buttonValues.length - 1] = field.max;
+                }
+            }
+                
+            // Calculate button dimensions
+            const buttonGroupWidth = this.isMobile && !this.isLandscape ? 
+                availableWidth * 0.6 : 
+                availableWidth * 0.4;
+                
+            const buttonWidth = buttonGroupWidth / buttonValues.length;
+            const buttonHeight = this.isMobile ? 40 : 30;
+            
+            // Create button group container
+            const buttonContainer = this.add.container(buttonGroupX, yPos);
+            buttonContainer.setDepth(SETTINGS_BASE_DEPTH);
+            
+            // Create buttons
+            buttonValues.forEach((value, i) => {
+                const isSelected = currentValue === value;
+                const buttonX = (i - buttonValues.length/2 + 0.5) * buttonWidth;
+                
+                // Button background
+                const buttonBg = this.add.rectangle(
+                    buttonX, 
+                    0, 
+                    buttonWidth - 4, 
+                    buttonHeight, 
+                    isSelected ? 0x3366cc : 0x555555,
+                    1
+                ).setOrigin(0.5);
+                
+                buttonBg.setStrokeStyle(2, isSelected ? 0xffffff : 0x888888);
+                
+                // Button text
+                const buttonText = this.add.text(
+                    buttonX,
+                    0,
+                    value.toString(),
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: (fontSize - 2) * scale,
+                        color: '#ffffff',
+                        fontStyle: isSelected ? 'bold' : 'normal'
+                    }
+                ).setOrigin(0.5);
+                
+                // Make button interactive
+                buttonBg.setInteractive({ useHandCursor: true });
+                
+                // Add hover effects
+                buttonBg.on('pointerover', () => {
+                    if (!isSelected) {
+                        buttonBg.setFillStyle(0x666666);
+                    }
+                });
+                
+                buttonBg.on('pointerout', () => {
+                    if (!isSelected) {
+                        buttonBg.setFillStyle(0x555555);
+                    }
+                });
+                
+                // Add click handler
+                buttonBg.on('pointerdown', () => {
+                    this.soundManager.playSound('click');
+                    
+                    // Update the value
+                    this.currentRules[field.key] = value;
+                    
+                    // Change to custom preset
+                    this.currentPreset = 'Custom';
+                    this.updatePresetButtons();
+                    
+                    // Refresh the UI to update button states
+                    this.cleanupUI();
+                    this.setupUI();
+                });
+                
+                // Add to container
+                buttonContainer.add(buttonBg);
+                buttonContainer.add(buttonText);
             });
         });
     }
 
     createCheckbox(x, y, label, isChecked, onToggle) {
         const scale = Math.min(this.cameras.main.width / 1024, this.cameras.main.height / 768);
-        const mobileScale = this.isMobile ? scale * 1.2 : scale;
 
         // Make checkbox bigger on mobile for easier touch
         const boxSize = this.isMobile ? 30 : 24;
@@ -680,128 +757,143 @@ export default class SettingsScene extends Phaser.Scene {
             .setOrigin(0.5)
             .setVisible(isChecked);
 
-        // Make checkbox and surrounding area interactive with larger hit area
-        const hitArea = new Phaser.Geom.Rectangle(
-            -boxSize / 2 - (this.isMobile ? 30 : 20),
-            -boxSize / 2 - (this.isMobile ? 30 : 20),
-            boxSize + (this.isMobile ? 200 : 100),
-            boxSize + (this.isMobile ? 60 : 40)
-        );
-
-        checkboxBg.setInteractive({
-            hitArea: hitArea,
-            hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-            useHandCursor: true
-        }).on('pointerdown', () => {
-            this.soundManager.playSound('click');
-            const newState = !checkboxFill.visible;
-            checkboxFill.setVisible(newState);
-            if (onToggle) onToggle(newState);
-        });
+        // Make checkbox and label positioned in a container for proper hit area
+        const container = this.add.container(0, 0);
+        container.add(checkboxBg);
+        container.add(checkboxFill);
 
         // Add label with adjusted size for mobile
-        const fontSize = Math.round((this.isMobile ? 20 : 16) * mobileScale);
+        const fontSize = Math.round((this.isMobile ? 20 : 16) * scale);
         const labelText = this.add.text(x + boxSize / 2 + 10, y, label, {
             fontFamily: 'Arial',
             fontSize: fontSize,
             color: '#ffffff'
         }).setOrigin(0, 0.5);
+        
+        container.add(labelText);
 
-        // Make the label clickable too
-        labelText.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+        // Set container to interactive with precise hit area
+        const hitAreaWidth = boxSize + labelText.width + 20;
+        const hitAreaHeight = Math.max(boxSize, labelText.height) + 10;
+        
+        container.setSize(hitAreaWidth, hitAreaHeight);
+        container.setInteractive({ useHandCursor: true });
+        
+        // Position the hit area correctly
+        container.input.hitArea.x = x - boxSize/2;
+        container.input.hitArea.y = y - hitAreaHeight/2;
+        
+        container.on('pointerdown', () => {
             this.soundManager.playSound('click');
             const newState = !checkboxFill.visible;
             checkboxFill.setVisible(newState);
             if (onToggle) onToggle(newState);
         });
 
-        return { bg: checkboxBg, fill: checkboxFill, label: labelText };
+        // Make container appear on top
+        container.setDepth(2);
+
+        return { bg: checkboxBg, fill: checkboxFill, label: labelText, container: container };
     }
 
-    createPresetButtons(x, y) {
-        const scale = Math.min(this.cameras.main.width / 1024, this.cameras.main.height / 768);
-        const mobileScale = this.isMobile ? scale * 1.2 : scale;
+    createPresetButtons(x, y, presets) {
+        const width = this.cameras.main.width;
+        const buttonSpacing = this.isMobile ? 15 : 10;
+        
+        // Initialize presetButtons object if not already initialized
+        this.presetButtons = {};
+        
+        // Increase button size on mobile
+        const buttonWidth = this.isMobile ? width * 0.2 : width * 0.15;
+        const buttonHeight = this.isMobile ? 50 : 40;
+        
+        // Calculate total width needed for all buttons in a row
+        const totalButtonWidth = (presets.length * buttonWidth) + ((presets.length - 1) * buttonSpacing);
+        
+        // Calculate starting X position to center the row of buttons
+        const startX = x - (totalButtonWidth / 2) + (buttonWidth / 2);
+        
+        // Create presets in a single row
+        presets.forEach((preset, index) => {
+            const buttonX = startX + (index * (buttonWidth + buttonSpacing));
+            const buttonY = y;
+            
+            const isActive = preset === this.currentPreset;
+            const bg = this.add.rectangle(
+                buttonX,
+                buttonY,
+                buttonWidth,
+                buttonHeight,
+                isActive ? 0x3366cc : 0x555555
+            ).setStrokeStyle(2, isActive ? 0xffffff : 0x888888);
+            
+            const text = this.add.text(
+                buttonX,
+                buttonY,
+                preset,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: this.isMobile ? 18 : 16,
+                    color: '#ffffff',
+                    fontStyle: isActive ? 'bold' : 'normal'
+                }
+            ).setOrigin(0.5);
+            
+            // Make button interactive
+            bg.setInteractive({ useHandCursor: true });
+            
+            // Add hover and press effects
+            bg.on('pointerover', () => {
+                if (!isActive) {
+                    bg.setFillStyle(0x666666);
+                }
+            });
+            
+            bg.on('pointerout', () => {
+                if (!isActive) {
+                    bg.setFillStyle(0x555555);
+                }
+            });
+            
+            bg.on('pointerdown', () => {
+                this.soundManager.playSound('click');
+                this.applyPreset(preset);
+                this.updatePresetButtons();
+            });
+            
+            // Store references to update active state later
+            this.presetButtons[preset] = { bg, text };
+        });
+    }
 
-        // Create a title for presets section
-        this.add.text(x, this.isMobile ? y - 35 : y - 40, 'Presets:', {
-            fontFamily: 'Arial',
-            fontSize: Math.round((this.isMobile ? 24 : 20) * mobileScale),
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5, 0.5);
-
-        const presets = ['Easy', 'Medium', 'Hard', 'Custom'];
-
-        // Adjust button size and layout for mobile
-        const buttonWidth = this.isMobile ? 100 : 120;
-        const spacing = buttonWidth + (this.isMobile ? 10 : 20);
-
-        // On portrait mobile, arrange 2x2 rather than 1x4
-        if (this.isMobile && !this.isLandscape) {
-            // Create a 2x2 grid of buttons
-            const buttonHeight = 50;
-            const row1Y = y;
-            const row2Y = y + buttonHeight + 10;
-
-            // Calculate left position for buttons
-            const col1X = x - spacing / 2;
-            const col2X = x + spacing / 2;
-
-            // Row 1: Easy, Medium
-            this.createPresetButton(presets[0], col1X, row1Y, buttonWidth, mobileScale);
-            this.createPresetButton(presets[1], col2X, row1Y, buttonWidth, mobileScale);
-
-            // Row 2: Hard, Custom
-            this.createPresetButton(presets[2], col1X, row2Y, buttonWidth, mobileScale);
-            this.createPresetButton(presets[3], col2X, row2Y, buttonWidth, mobileScale);
-        } else {
-            // Standard horizontal arrangement
-            const totalWidth = (buttonWidth * presets.length) + (spacing * (presets.length - 1));
-            let startX = x - (totalWidth / 2) + (buttonWidth / 2);
-
-            presets.forEach((preset, index) => {
-                const buttonX = startX + (index * spacing);
-                this.createPresetButton(preset, buttonX, y, buttonWidth, mobileScale);
+    updatePresetButtons() {
+        // Update button appearances based on current preset
+        for (const preset in this.presetButtons) {
+            const isActive = preset === this.currentPreset;
+            const button = this.presetButtons[preset];
+            
+            // Update button style
+            const backgroundColor = isActive ? 
+                0x3366cc : 
+                0x555555;
+                
+            button.bg.setFillStyle(backgroundColor);
+            button.bg.setStrokeStyle(2, isActive ? 0xffffff : 0x888888);
+            button.text.setStyle({
+                fontStyle: isActive ? 'bold' : 'normal'
             });
         }
     }
-
-    createPresetButton(preset, x, y, width, scale) {
-        const buttonColor = preset === 'Custom' ? '#aa6600' : '#0066aa';
-        const hoverColor = preset === 'Custom' ? '#cc8800' : '#0088cc';
-
-        const button = this.add.text(
-            x,
-            y,
-            preset,
-            {
-                fontFamily: 'Arial',
-                fontSize: Math.round(28 * scale),
-                color: '#ffffff',
-                backgroundColor: buttonColor,
-                padding: {
-                    left: Math.round(15 * scale),
-                    right: Math.round(15 * scale),
-                    top: Math.round(10 * scale),
-                    bottom: Math.round(10 * scale)
-                },
-                fontStyle: 'bold',
-                align: 'center'
-            }
-        ).setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => button.setStyle({ backgroundColor: hoverColor }))
-            .on('pointerout', () => button.setStyle({ backgroundColor: buttonColor }))
-            .on('pointerdown', () => {
-                this.soundManager.playSound('click');
-                if (preset !== 'Custom') {
-                    this.currentRules = { ...GAME_RULES_PRESETS[preset] };
-                    this.cleanupUI();
-                    this.setupUI();
-                }
-            });
-
-        return button;
+    
+    applyPreset(preset) {
+        if (preset !== 'Custom') {
+            this.currentRules = { ...LOGICAL_PRESETS[preset] };
+            this.currentPreset = preset;
+            
+            // Refresh the UI to reflect the new settings
+            this.cleanupUI();
+            this.setupUI();
+        }
     }
 
     saveSettings() {
@@ -867,5 +959,84 @@ export default class SettingsScene extends Phaser.Scene {
 
         // Return to menu scene
         this.scene.start('MenuScene');
+    }
+
+    // Add a new method to create arithmetic settings
+    createArithmeticSettings(x, y, width, height) {
+        const arithmeticText = this.add.text(
+            x, y, 'Select Arithmetic Difficulty:', {
+                fontFamily: 'Arial',
+                fontSize: 24,
+                color: '#ffffff'
+            }
+        ).setOrigin(0.5);
+
+        // Example options for arithmetic difficulty
+        const difficulties = ['Easy Addition', 'Hard Addition', 'Easy Subtraction', 'Hard Subtraction'];
+        difficulties.forEach((difficulty, index) => {
+            this.add.text(
+                x, y + 30 * (index + 1), difficulty, {
+                    fontFamily: 'Arial',
+                    fontSize: 20,
+                    color: '#ffffff'
+                }
+            ).setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => {
+                this.soundManager.playSound('click');
+                this.currentRules.arithmeticDifficulty = difficulty;
+            });
+        });
+    }
+
+    // Update isPreset method to use logical presets
+    isPreset(preset) {
+        const presetRules = LOGICAL_PRESETS[preset];
+        // Only check key settings that define the preset
+        const keySettings = ['speedMin', 'speedMax', 'monstersMin', 'monstersMax'];
+        return keySettings.every(key => this.currentRules[key] === presetRules[key]);
+    }
+
+    // Add a helper method to create buttons with improved styling
+    createButton(text, x, y, color, hoverColor, onClick) {
+        const button = this.add.text(
+            x,
+            y,
+            text,
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(36 * (this.isMobile ? 1.2 : 1)),
+                color: '#ffffff',
+                backgroundColor: color,
+                padding: {
+                    left: 40,
+                    right: 40,
+                    top: 25,
+                    bottom: 25
+                },
+                fontStyle: 'bold',
+                shadow: {
+                    offsetX: 2,
+                    offsetY: 2,
+                    color: '#000000',
+                    blur: 5,
+                    fill: true
+                }
+            }
+        ).setOrigin(0.5)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => button.setStyle({ backgroundColor: hoverColor }))
+            .on('pointerout', () => button.setStyle({ backgroundColor: color }))
+            .on('pointerdown', onClick);
+    }
+
+    // Add method to detect which preset the current settings match
+    detectCurrentPreset() {
+        for (const preset of ['Easy', 'Medium', 'Hard']) {
+            if (this.isPreset(preset)) {
+                return preset;
+            }
+        }
+        return 'Custom';
     }
 } 
