@@ -254,6 +254,7 @@ export default class GameOverScene extends Phaser.Scene {
         if (this.score > minScore || (data && data.length < 10)) {
             this.promptForNameAndSave();
         }
+        // If not in top 10, do nothing (no prompt)
     }
 
     promptForNameAndSave() {
