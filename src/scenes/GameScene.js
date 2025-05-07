@@ -77,13 +77,9 @@ export default class GameScene extends Phaser.Scene {
     }
 
     cleanupUI() {
-        if (this.inputField) this.inputField.destroy();
-        if (this.cursor) this.cursor.destroy();
         if (this.scoreText) this.scoreText.destroy();
-
         // Close any open modal
         this.closeAnswerModal();
-
         if (this.numPad) {
             this.numPad.forEach(button => button.destroy());
         }
@@ -170,68 +166,46 @@ export default class GameScene extends Phaser.Scene {
             `Score: ${this.score}`,
             {
                 fontFamily: 'Arial',
-                fontSize: Math.round(this.isMobile ? 32 * scale : 24 * scale),
+                fontSize: Math.round(28 * scale),
                 color: '#ffffff',
                 stroke: '#000000',
-                strokeThickness: this.isMobile ? 3 : 2,
-                fontStyle: this.isMobile ? 'bold' : 'normal'
+                strokeThickness: 3,
+                fontStyle: 'bold'
             }
         ).setOrigin(0, 0); // Left aligned
 
-        // On mobile, we skip the traditional input field and use direct monster targeting instead
-        if (this.isMobile || window.innerWidth < 768) {
-            this.setupDirectTargeting();
-        } else {
-            // For desktop, keep the traditional input field
-            const inputY = this.isLandscape
-                ? height - 50
-                : this.gameOverLine + (height - this.gameOverLine) * 0.25;
-
-            const inputHandler = this.uiFactory.createInputField(
-                width / 2,
-                inputY,
-                scale
-            );
-
-            this.inputField = inputHandler.inputField;
-            this.cursor = inputHandler.cursor;
-            this.updateCursorPosition = inputHandler.updateCursorPosition;
-        }
+        // Always use direct monster targeting and answer selection modal for all devices
+        this.setupDirectTargeting();
     }
 
     setupDirectTargeting() {
-        // Create a help text for new players
-        if (this.isMobile) {
-            const width = this.cameras.main.width;
-            const scale = LAYOUT.getUIScale(width, this.cameras.main.height);
-
-            // Add tap instruction text
-            const helpText = this.add.text(
-                width / 2,
-                40,
-                "Tap monsters to select and answer!",
-                {
-                    fontFamily: 'Arial',
-                    fontSize: Math.round(18 * scale),
-                    color: '#ffffff',
-                    stroke: '#000000',
-                    strokeThickness: 3,
-                    padding: { x: 10, y: 5 },
-                    backgroundColor: '#00000066'
-                }
-            ).setOrigin(0.5, 0);
-
-            // Fade out after 5 seconds
-            this.tweens.add({
-                targets: helpText,
-                alpha: 0,
-                delay: 5000,
-                duration: 1000,
-                onComplete: () => {
-                    helpText.destroy();
-                }
-            });
-        }
+        // Create a help text for new players (universal)
+        const width = this.cameras.main.width;
+        const scale = LAYOUT.getUIScale(width, this.cameras.main.height);
+        const helpText = this.add.text(
+            width / 2,
+            40,
+            "Select the answer for the nearest monster!",
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(18 * scale),
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 3,
+                padding: { x: 10, y: 5 },
+                backgroundColor: '#00000066'
+            }
+        ).setOrigin(0.5, 0);
+        // Fade out after 5 seconds
+        this.tweens.add({
+            targets: helpText,
+            alpha: 0,
+            delay: 5000,
+            duration: 1000,
+            onComplete: () => {
+                helpText.destroy();
+            }
+        });
     }
 
     setupInput() {
@@ -240,65 +214,13 @@ export default class GameScene extends Phaser.Scene {
     }
 
     handleKeyDown(event) {
-        // Skip keyboard handling on mobile
-        if (this.isMobile || window.innerWidth < 768) {
-            return;
-        }
-
-        // Handle numeric input (0-9)
-        if ((event.keyCode >= 48 && event.keyCode <= 57) || (event.keyCode >= 96 && event.keyCode <= 105)) {
-            const number = event.keyCode >= 96 ? event.keyCode - 96 : event.keyCode - 48;
-            this.answerText += number.toString();
-            this.inputField.setText(this.answerText);
-            this.updateCursorPosition();
-            this.soundManager.playSound('click');
-        }
-
-        // Handle backspace
-        if (event.keyCode === 8 && this.answerText.length > 0) {
-            this.answerText = this.answerText.substring(0, this.answerText.length - 1);
-            this.inputField.setText(this.answerText);
-            this.updateCursorPosition();
-            this.soundManager.playSound('click');
-        }
-
-        // Handle Enter key (submit answer)
-        if (event.keyCode === 13 && this.answerText.length > 0) {
-            this.checkAnswer();
-        }
+        // No keyboard input for answers anymore
+        return;
     }
 
     checkAnswer() {
-        if (this.answerText.length === 0) {
-            return;
-        }
-
-        const answer = parseInt(this.answerText);
-        let correct = false;
-
-        // Check if the answer matches any monster
-        for (let i = 0; i < this.monsters.length; i++) {
-            if (answer === this.monsters[i].result) {
-                // Correct answer
-                this.score += this.monsters[i].explode();
-                this.scoreText.setText(`Score: ${this.score}`);
-                correct = true;
-                this.monsters.splice(i, 1);
-                break;
-            }
-        }
-
-        // Play sound feedback
-        if (correct) {
-            this.soundManager.playSound('correct');
-        } else {
-            this.soundManager.playSound('wrong');
-        }
-
-        // Clear input regardless of correct or not
-        this.answerText = '';
-        this.inputField.setText('');
-        this.updateCursorPosition();
+        // No manual answer input anymore
+        return;
     }
 
     addMonster() {
@@ -344,20 +266,17 @@ export default class GameScene extends Phaser.Scene {
             problem.result
         );
 
-        // For mobile or small screens, make the monster tappable
-        if (this.isMobile || window.innerWidth < 768) {
-            monster.setInteractive({ useHandCursor: true });
-            monster.on('pointerdown', () => this.handleMonsterTap(monster));
-
-            // Add hover effect for visual feedback
-            monster.on('pointerover', () => {
-                monster.setAlpha(0.8);
-            });
-
-            monster.on('pointerout', () => {
-                monster.setAlpha(1);
-            });
-        }
+        // Always make the monster tappable and interactive
+        monster.setInteractive({ useHandCursor: true });
+        monster.on('pointerdown', () => {
+            // Switch the answer modal to this monster
+            if (this.currentTargetMonster !== monster) {
+                this.currentTargetMonster = monster;
+                this.createAnswerSelectionModal(monster);
+            }
+        });
+        monster.on('pointerover', () => { monster.setAlpha(0.8); });
+        monster.on('pointerout', () => { monster.setAlpha(1); });
 
         // Play monster sound
         monster.playSound();
@@ -467,39 +386,21 @@ export default class GameScene extends Phaser.Scene {
             }
             return;
         }
-
-        // If we don't have a target monster or the current target no longer exists,
-        // find a new one (always target the bottom-most monster)
+        // If the current target is gone, or not set, default to the bottom-most monster
         if (!this.currentTargetMonster || !this.monsters.includes(this.currentTargetMonster)) {
-            // Find the bottom-most monster
             let bottomMonster = this.monsters[0];
             for (let i = 1; i < this.monsters.length; i++) {
                 if (this.monsters[i].y > bottomMonster.y) {
                     bottomMonster = this.monsters[i];
                 }
             }
-
-            // Set as new target and show its buttons
             this.currentTargetMonster = bottomMonster;
             this.createAnswerSelectionModal(bottomMonster);
         }
-    }
-
-    // Modified handle monster tap to switch targets without toggling off
-    handleMonsterTap(monster) {
-        // Stop any existing highlighting on previous monster
-        if (this.currentTargetMonster && this.currentTargetMonster !== monster) {
-            this.tweens.killTweensOf(this.currentTargetMonster);
-            if (this.currentTargetMonster.scene) {
-                this.currentTargetMonster.setAlpha(1);
-            }
+        // If there is a current target, ensure the modal is visible for it
+        else if (!this.modalElements || this.modalElements.length === 0) {
+            this.createAnswerSelectionModal(this.currentTargetMonster);
         }
-
-        // Always set the current target to the tapped monster
-        this.currentTargetMonster = monster;
-
-        // Create answer selection modal for the monster
-        this.createAnswerSelectionModal(monster);
     }
 
     // Method to create an answer selection modal when a monster is tapped
@@ -544,21 +445,11 @@ export default class GameScene extends Phaser.Scene {
         // Adjust button size for mobile
         let buttonWidth, buttonHeight, spacing, buttonY, fontSize;
 
-        if (this.isMobile) {
-            // Enhanced mobile buttons - much larger for touch
-            buttonWidth = Math.min(width * 0.22, 100);
-            buttonHeight = Math.min(height * 0.1, 70);
-            spacing = buttonWidth * 0.15;
-            buttonY = height - 80; // Position higher for better visibility
-            fontSize = Math.round(36 * scale);
-        } else {
-            // Desktop sizes
-            buttonWidth = Math.min(width * 0.2, 80);
-            buttonHeight = Math.min(height * 0.07, 50);
-            spacing = buttonWidth * 0.2;
-            buttonY = height - 60;
-            fontSize = Math.round(28 * scale);
-        }
+        buttonWidth = Math.min(width * 0.2, 90);
+        buttonHeight = Math.min(height * 0.08, 60);
+        spacing = buttonWidth * 0.18;
+        buttonY = height - 70;
+        fontSize = Math.round(32 * scale);
 
         const buttonElements = [];
 
@@ -566,52 +457,12 @@ export default class GameScene extends Phaser.Scene {
         const totalWidth = (buttonWidth * 4) + (spacing * 3);
         let startX = (width - totalWidth) / 2;
 
-        // Add target indicator text for mobile
-        if (this.isMobile) {
-            // Show a small instruction at the top of the buttons
-            const helpText = this.add.text(
-                width / 2,
-                buttonY - buttonHeight - 10,
-                "Select answer for highlighted monster",
-                {
-                    fontFamily: 'Arial',
-                    fontSize: Math.round(16 * scale),
-                    color: '#ffffff',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            ).setOrigin(0.5);
-            buttonElements.push(helpText);
-
-            // Add visual indicator to show which monster is targeted
-            if (monster) {
-                // Highlight the targeted monster with a pulsing effect
-                this.tweens.add({
-                    targets: monster,
-                    alpha: 0.7,
-                    yoyo: true,
-                    repeat: -1,
-                    duration: 500
-                });
-
-                // Add this tween to modal elements so it gets cleaned up
-                buttonElements.push({
-                    destroy: () => {
-                        this.tweens.killTweensOf(monster);
-                        if (monster && monster.scene) {
-                            monster.setAlpha(1);
-                        }
-                    }
-                });
-            }
-        }
-
         // Position buttons in a horizontal row at the bottom
         for (let i = 0; i < answers.length; i++) {
             const buttonX = startX + (i * (buttonWidth + spacing)) + buttonWidth / 2;
 
             // Enhanced button design
-            const buttonColor = this.isMobile ? 0x4488cc : 0x444444;
+            const buttonColor = 0x444444;
             const button = this.add.rectangle(
                 buttonX,
                 buttonY,
@@ -638,40 +489,17 @@ export default class GameScene extends Phaser.Scene {
             button.setInteractive({ useHandCursor: true });
 
             // Enhanced visual feedback for mobile
-            if (this.isMobile) {
-                // Add shadow for 3D effect
-                const shadow = this.add.rectangle(
-                    buttonX + 2,
-                    buttonY + 3,
-                    buttonWidth,
-                    buttonHeight,
-                    0x000000,
-                    0.3
-                ).setOrigin(0.5);
-                buttonElements.push(shadow);
+            button.on('pointerover', () => {
+                button.setFillStyle(0x66aaee);
+                button.setScale(1.05);
+                buttonText.setScale(1.05);
+            });
 
-                // More pronounced hover effects for mobile
-                button.on('pointerover', () => {
-                    button.setFillStyle(0x66aaee);
-                    button.setScale(1.05);
-                    buttonText.setScale(1.05);
-                });
-
-                button.on('pointerout', () => {
-                    button.setFillStyle(0x4488cc);
-                    button.setScale(1);
-                    buttonText.setScale(1);
-                });
-            } else {
-                // Desktop hover effects
-                button.on('pointerover', () => {
-                    button.setFillStyle(0x666666);
-                });
-
-                button.on('pointerout', () => {
-                    button.setFillStyle(0x444444);
-                });
-            }
+            button.on('pointerout', () => {
+                button.setFillStyle(0x4488cc);
+                button.setScale(1);
+                buttonText.setScale(1);
+            });
 
             // Handle button click
             button.on('pointerdown', () => {
@@ -713,27 +541,14 @@ export default class GameScene extends Phaser.Scene {
                     this.soundManager.playSound('wrong');
 
                     // Visual feedback for wrong answer - enhanced for mobile
-                    if (this.isMobile) {
-                        this.tweens.add({
-                            targets: [button, buttonText],
-                            alpha: 0.3,
-                            scale: 0.95,
-                            duration: 200,
-                            yoyo: true,
-                            repeat: 1
-                        });
-
-                        // Add shake effect for wrong answer
-                        this.cameras.main.shake(100, 0.01);
-                    } else {
-                        this.tweens.add({
-                            targets: [button, buttonText],
-                            alpha: 0.3,
-                            duration: 300,
-                            yoyo: true,
-                            repeat: 1
-                        });
-                    }
+                    this.tweens.add({
+                        targets: [button, buttonText],
+                        alpha: 0.3,
+                        scale: 0.95,
+                        duration: 200,
+                        yoyo: true,
+                        repeat: 1
+                    });
                 }
             });
 
