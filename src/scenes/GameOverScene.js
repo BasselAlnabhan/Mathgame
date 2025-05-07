@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import UIFactory from '../managers/UIFactory';
 import SoundManager from '../managers/SoundManager';
+import { createClient } from '@supabase/supabase-js';
 
 export default class GameOverScene extends Phaser.Scene {
     constructor() {
@@ -9,6 +10,12 @@ export default class GameOverScene extends Phaser.Scene {
         this.difficulty = 'Easy';
         this.isLandscape = true;
         this.isMobile = false;
+        // Supabase client setup
+        this.supabase = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY
+        );
+        this.isPromptOpen = false;
     }
 
     init(data) {
@@ -19,7 +26,7 @@ export default class GameOverScene extends Phaser.Scene {
         }
     }
 
-    create() {
+    async create() {
         // Initialize UI factory and sound manager
         this.uiFactory = new UIFactory(this);
         this.soundManager = new SoundManager(this);
@@ -37,6 +44,9 @@ export default class GameOverScene extends Phaser.Scene {
 
         // Handle resize/orientation changes
         window.addEventListener('resize', this.handleResize.bind(this));
+
+        // Leaderboard logic: check if score qualifies
+        await this.checkAndPromptLeaderboard();
     }
 
     checkDeviceAndOrientation() {
@@ -226,7 +236,124 @@ export default class GameOverScene extends Phaser.Scene {
     setupInput() {
         // Also allow pressing any key to return to menu
         this.input.keyboard.on('keydown', () => {
-            this.returnToMenu();
+            if (!this.isPromptOpen) {
+                this.returnToMenu();
+            }
+        });
+    }
+
+    async checkAndPromptLeaderboard() {
+        // Fetch current top 10
+        let { data, error } = await this.supabase
+            .from('leaderboard')
+            .select('score')
+            .order('score', { ascending: false })
+            .limit(10);
+        if (error) return;
+        const minScore = data && data.length === 10 ? data[9].score : 0;
+        if (this.score > minScore || (data && data.length < 10)) {
+            this.promptForNameAndSave();
+        }
+    }
+
+    promptForNameAndSave() {
+        this.isPromptOpen = true;
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const scale = Math.min(width / 1024, height / 768);
+
+        // Overlay
+        const overlay = this.add.rectangle(
+            width / 2,
+            height / 2,
+            width,
+            height,
+            0x000000,
+            0.7
+        ).setOrigin(0.5).setDepth(2000);
+
+        // Panel
+        const panelWidth = width * 0.4;
+        const panelHeight = height * 0.25;
+        const panel = this.add.rectangle(
+            width / 2,
+            height / 2,
+            panelWidth,
+            panelHeight,
+            0x222222,
+            0.95
+        ).setOrigin(0.5).setDepth(2001).setStrokeStyle(3, 0x8B4513);
+
+        // Title
+        const title = this.add.text(
+            width / 2,
+            height / 2 - panelHeight / 2 + 40 * scale,
+            'New High Score!',
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(32 * scale),
+                color: '#FFD700',
+                fontStyle: 'bold',
+                align: 'center'
+            }
+        ).setOrigin(0.5).setDepth(2002);
+
+        // Prompt
+        const prompt = this.add.text(
+            width / 2,
+            height / 2 - 10 * scale,
+            'Enter your name:',
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(24 * scale),
+                color: '#ffffff',
+                align: 'center'
+            }
+        ).setOrigin(0.5).setDepth(2002);
+
+        // HTML input for name
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 16;
+        input.placeholder = 'Your name';
+        input.style.position = 'absolute';
+        input.style.left = `${width / 2 - 100}px`;
+        input.style.top = `${height / 2 + 20 * scale}px`;
+        input.style.width = '200px';
+        input.style.fontSize = '20px';
+        input.style.zIndex = 10000;
+        document.body.appendChild(input);
+        input.focus();
+
+        // Save button
+        const saveButton = this.uiFactory.createButton(
+            width / 2,
+            height / 2 + panelHeight / 2 - 30 * scale,
+            'SAVE',
+            '#00aa00',
+            '#00cc00'
+        ).setDepth(2002).on('pointerdown', async () => {
+            const player = input.value.trim() || 'Anonymous';
+            await this.supabase.from('leaderboard').insert([{ player, score: this.score }]);
+            overlay.destroy();
+            panel.destroy();
+            title.destroy();
+            prompt.destroy();
+            saveButton.destroy();
+            document.body.removeChild(input);
+            this.isPromptOpen = false;
+            // Optionally show a confirmation
+            this.add.text(
+                width / 2,
+                height / 2,
+                'Score saved!',
+                {
+                    fontFamily: 'Arial',
+                    fontSize: Math.round(24 * scale),
+                    color: '#00ff00',
+                    align: 'center'
+                }
+            ).setOrigin(0.5).setDepth(2002);
         });
     }
 

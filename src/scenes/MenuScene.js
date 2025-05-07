@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import UIFactory from '../managers/UIFactory';
 import SoundManager from '../managers/SoundManager';
 import { loadCustomRules } from '../config/GameConfig';
+import { createClient } from '@supabase/supabase-js';
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
@@ -15,6 +16,11 @@ export default class MenuScene extends Phaser.Scene {
         } else {
             this.difficulty = 'Medium'; // Default difficulty if no custom rules
         }
+        // Supabase client setup
+        this.supabase = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY
+        );
     }
 
     create() {
@@ -160,6 +166,18 @@ export default class MenuScene extends Phaser.Scene {
                 this.soundManager.playSound('click');
                 this.openSettings();
             });
+
+            // Add leaderboard button below settings
+            const leaderboardButton = this.uiFactory.createButton(
+                width / 2,
+                height * 0.85,
+                'LEADERBOARD',
+                '#8B4513',
+                '#A0522D'
+            ).on('pointerdown', () => {
+                this.soundManager.playSound('click');
+                this.openLeaderboard();
+            });
         } else {
             // Portrait layout - adjust vertical spacing
             // Add title with glow effect
@@ -227,6 +245,18 @@ export default class MenuScene extends Phaser.Scene {
                 this.soundManager.playSound('click');
                 this.openSettings();
             });
+
+            // Add leaderboard button below settings
+            const leaderboardButton = this.uiFactory.createButton(
+                width / 2,
+                height * 0.75,
+                'LEADERBOARD',
+                '#8B4513',
+                '#A0522D'
+            ).on('pointerdown', () => {
+                this.soundManager.playSound('click');
+                this.openLeaderboard();
+            });
         }
     }
 
@@ -238,6 +268,127 @@ export default class MenuScene extends Phaser.Scene {
 
         // Start settings scene
         this.scene.start('SettingsScene');
+    }
+
+    async openLeaderboard() {
+        // Remove any existing leaderboard modal
+        if (this.leaderboardModal) {
+            this.leaderboardModal.destroy(true);
+        }
+
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        const scale = Math.min(width / 1024, height / 768);
+
+        // Modal overlay
+        const overlay = this.add.rectangle(
+            width / 2,
+            height / 2,
+            width,
+            height,
+            0x000000,
+            0.7
+        ).setOrigin(0.5).setDepth(1000);
+
+        // Modal panel
+        const panelWidth = width * 0.5;
+        const panelHeight = height * 0.6;
+        const panel = this.add.rectangle(
+            width / 2,
+            height / 2,
+            panelWidth,
+            panelHeight,
+            0x222222,
+            0.95
+        ).setOrigin(0.5).setDepth(1001).setStrokeStyle(3, 0x8B4513);
+
+        // Title
+        const title = this.add.text(
+            width / 2,
+            height / 2 - panelHeight / 2 + 50 * scale,
+            'LEADERBOARD',
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(40 * scale),
+                color: '#FFD700',
+                fontStyle: 'bold',
+                align: 'center'
+            }
+        ).setOrigin(0.5).setDepth(1002);
+
+        // Loading message
+        const loadingText = this.add.text(
+            width / 2,
+            height / 2,
+            'Loading...',
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(28 * scale),
+                color: '#ffffff',
+                align: 'center'
+            }
+        ).setOrigin(0.5).setDepth(1002);
+
+        // Close button
+        const closeButton = this.uiFactory.createButton(
+            width / 2,
+            height / 2 + panelHeight / 2 - 40 * scale,
+            'CLOSE',
+            '#aa0000',
+            '#cc0000'
+        ).setDepth(1002).on('pointerdown', () => {
+            overlay.destroy();
+            panel.destroy();
+            title.destroy();
+            loadingText.destroy();
+            if (this.leaderboardEntries) this.leaderboardEntries.forEach(e => e.destroy());
+            closeButton.destroy();
+            this.leaderboardModal = null;
+        });
+
+        // Store modal elements for cleanup
+        this.leaderboardModal = this.add.container(0, 0, [overlay, panel, title, loadingText, closeButton]);
+        this.leaderboardModal.setDepth(1000);
+
+        // Fetch leaderboard data from Supabase
+        let { data, error } = await this.supabase
+            .from('leaderboard')
+            .select('player,score')
+            .order('score', { ascending: false })
+            .limit(10);
+
+        loadingText.setVisible(false);
+        this.leaderboardEntries = [];
+        if (error) {
+            const errorText = this.add.text(
+                width / 2,
+                height / 2,
+                'Failed to load leaderboard',
+                {
+                    fontFamily: 'Arial',
+                    fontSize: Math.round(24 * scale),
+                    color: '#ff4444',
+                    align: 'center'
+                }
+            ).setOrigin(0.5).setDepth(1002);
+            this.leaderboardEntries.push(errorText);
+        } else {
+            data.forEach((entry, i) => {
+                const entryText = this.add.text(
+                    width / 2,
+                    height / 2 - panelHeight / 2 + 110 * scale + i * 40 * scale,
+                    `${i + 1}. ${entry.player} - ${entry.score}`,
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: Math.round(26 * scale),
+                        color: '#ffffff',
+                        align: 'left'
+                    }
+                ).setOrigin(0.5, 0).setDepth(1002);
+                this.leaderboardEntries.push(entryText);
+            });
+        }
+        this.leaderboardModal.add(this.leaderboardEntries);
     }
 
     startGame() {
