@@ -268,9 +268,6 @@ export default class Monster extends Phaser.GameObjects.Container {
                     console.log('Particle effect not available');
                 }
             }
-
-            // Add camera shake for impact
-            this.scene.cameras.main.shake(200, 0.01);
         }
 
         // Play explosion sound (keep using the explosion sound since we're exploding)
