@@ -1,28 +1,13 @@
 import Phaser from 'phaser';
 import UIFactory from '../managers/UIFactory';
 import SoundManager from '../managers/SoundManager';
-import { createClient } from '@supabase/supabase-js';
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MenuScene' });
+        this.difficulty = 'Easy'; // Default difficulty
         this.isLandscape = true;
         this.isMobile = false;
-        // Supabase client setup
-        if (!import.meta.env.VITE_SUPABASE_URL) {
-            console.warn('VITE_SUPABASE_URL is NOT set');
-        } else {
-            console.info('VITE_SUPABASE_URL is set');
-        }
-        if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-            console.warn('VITE_SUPABASE_ANON_KEY is NOT set');
-        } else {
-            console.info('VITE_SUPABASE_ANON_KEY is set');
-        }
-        this.supabase = createClient(
-            import.meta.env.VITE_SUPABASE_URL,
-            import.meta.env.VITE_SUPABASE_ANON_KEY
-        );
     }
 
     create() {
@@ -157,23 +142,10 @@ export default class MenuScene extends Phaser.Scene {
                 repeat: -1
             });
 
-            // Add leaderboard button a bit further down, and match play button width
-            const leaderboardButton = this.uiFactory.createButton(
-                width / 2,
-                height * 0.7,
-                'LEADERBOARD',
-                '#8B4513',
-                '#A0522D'
-            ).on('pointerdown', () => {
-                this.soundManager.playSound('click');
-                this.openLeaderboard();
-            });
-            leaderboardButton.setDisplaySize(playButton.displayWidth, playButton.displayHeight);
-
-            // Add difficulty selector further down
+            // Add difficulty selector
             const difficultySelector = this.uiFactory.createDifficultySelector(
                 width / 2,
-                height * 0.8,
+                height * 0.75,
                 ['Easy', 'Medium', 'Hard'],
                 (difficulty) => {
                     this.difficulty = difficulty;
@@ -210,7 +182,7 @@ export default class MenuScene extends Phaser.Scene {
             // Add play button - bigger in portrait mode
             const playButton = this.uiFactory.createButton(
                 width / 2,
-                height * 0.45,
+                height * 0.4,
                 'PLAY',
                 '#0066cc',
                 '#3399ff'
@@ -238,153 +210,90 @@ export default class MenuScene extends Phaser.Scene {
                 });
             }
 
-            // Add leaderboard button a bit further down, and match play button width
-            const leaderboardButton = this.uiFactory.createButton(
-                width / 2,
-                height * 0.6,
-                'LEADERBOARD',
-                '#8B4513',
-                '#A0522D'
-            ).on('pointerdown', () => {
-                this.soundManager.playSound('click');
-                this.openLeaderboard();
-            });
-            leaderboardButton.setDisplaySize(playButton.displayWidth, playButton.displayHeight);
-
-            // Add difficulty selector further down
-            const difficultySelector = this.uiFactory.createDifficultySelector(
-                width / 2,
-                height * 0.7,
-                ['Easy', 'Medium', 'Hard'],
-                (difficulty) => {
-                    this.difficulty = difficulty;
-                    this.soundManager.playSound('click');
-                    console.log('Difficulty set to:', difficulty);
-                },
-                this.difficulty // Use current difficulty
-            );
+            // Add difficulty selector - stacked vertically in portrait mode
+            this.createVerticalDifficultySelector(width / 2, height * 0.55);
         }
     }
 
-    async openLeaderboard() {
-        // Remove any existing leaderboard modal
-        if (this.leaderboardModal) {
-            this.leaderboardModal.destroy(true);
-        }
+    createVerticalDifficultySelector(x, y) {
+        // Create title text with better visibility
+        const title = this.uiFactory.createSubtitle(
+            x, y - 50,
+            'Select Difficulty:'
+        );
 
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-        const scale = Math.min(width / 1024, height / 768);
+        const difficulties = ['Easy', 'Medium', 'Hard'];
+        const buttons = [];
+        const buttonSpacing = this.isMobile ? 90 : 70; // Increase spacing on mobile
+        const scale = Math.min(this.cameras.main.width / 1024, this.cameras.main.height / 768);
 
-        // Modal overlay
-        const overlay = this.add.rectangle(
-            width / 2,
-            height / 2,
-            width,
-            height,
-            0x000000,
-            0.7
-        ).setOrigin(0.5).setDepth(1000);
+        // Create a button for each difficulty level, stacked vertically
+        difficulties.forEach((diff, index) => {
+            const isSelected = diff === this.difficulty;
+            const buttonY = y + (index * buttonSpacing);
 
-        // Modal panel
-        const panelWidth = width * 0.5;
-        const panelHeight = height * 0.6;
-        const panel = this.add.rectangle(
-            width / 2,
-            height / 2,
-            panelWidth,
-            panelHeight,
-            0x222222,
-            0.95
-        ).setOrigin(0.5).setDepth(1001).setStrokeStyle(3, 0x8B4513);
+            // Enhanced button style
+            const buttonColor = isSelected ? '#555555' : '#333333';
+            const borderColor = isSelected ? '#ffffff' : '#aaaaaa';
+            const hoverColor = isSelected ? '#666666' : '#444444';
 
-        // Title
-        const title = this.add.text(
-            width / 2,
-            height / 2 - panelHeight / 2 + 50 * scale,
-            'LEADERBOARD',
-            {
-                fontFamily: 'Arial',
-                fontSize: Math.round(40 * scale),
-                color: '#FFD700',
-                fontStyle: 'bold',
-                align: 'center'
-            }
-        ).setOrigin(0.5).setDepth(1002);
+            // Create button background with border for better visibility
+            const buttonBg = this.add.rectangle(
+                x,
+                buttonY,
+                this.isMobile ? 180 : 140,
+                this.isMobile ? 60 : 45,
+                Phaser.Display.Color.HexStringToColor(buttonColor).color
+            ).setOrigin(0.5);
 
-        // Loading message
-        const loadingText = this.add.text(
-            width / 2,
-            height / 2,
-            'Loading...',
-            {
-                fontFamily: 'Arial',
-                fontSize: Math.round(28 * scale),
-                color: '#ffffff',
-                align: 'center'
-            }
-        ).setOrigin(0.5).setDepth(1002);
+            // Add border
+            buttonBg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(borderColor).color);
 
-        // Close button
-        const closeButton = this.uiFactory.createButton(
-            width / 2,
-            height / 2 + panelHeight / 2 - 40 * scale,
-            'CLOSE',
-            '#aa0000',
-            '#cc0000'
-        ).setDepth(1002).on('pointerdown', () => {
-            overlay.destroy();
-            panel.destroy();
-            title.destroy();
-            loadingText.destroy();
-            if (this.leaderboardEntries) this.leaderboardEntries.forEach(e => e.destroy());
-            closeButton.destroy();
-            this.leaderboardModal = null;
-        });
+            // Make background interactive
+            buttonBg.setInteractive({ useHandCursor: true });
 
-        // Store modal elements for cleanup
-        this.leaderboardModal = this.add.container(0, 0, [overlay, panel, title, loadingText, closeButton]);
-        this.leaderboardModal.setDepth(1000);
+            // Add hover effect
+            buttonBg.on('pointerover', () => {
+                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor(hoverColor).color);
+            });
 
-        // Fetch leaderboard data from Supabase
-        let { data, error } = await this.supabase
-            .from('leaderboard')
-            .select('player,score')
-            .order('score', { ascending: false })
-            .limit(10);
+            buttonBg.on('pointerout', () => {
+                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor(buttonColor).color);
+            });
 
-        loadingText.setVisible(false);
-        this.leaderboardEntries = [];
-        if (error) {
-            const errorText = this.add.text(
-                width / 2,
-                height / 2,
-                'Failed to load leaderboard',
+            const button = this.add.text(
+                x,
+                buttonY,
+                diff,
                 {
                     fontFamily: 'Arial',
-                    fontSize: Math.round(24 * scale),
-                    color: '#ff4444',
-                    align: 'center'
+                    fontSize: this.isMobile ? Math.round(32 * scale) : Math.round(28 * scale),
+                    color: '#ffffff',
+                    fontStyle: 'bold',
+                    stroke: '#000000',
+                    strokeThickness: 2
                 }
-            ).setOrigin(0.5).setDepth(1002);
-            this.leaderboardEntries.push(errorText);
-        } else {
-            data.forEach((entry, i) => {
-                const entryText = this.add.text(
-                    width / 2,
-                    height / 2 - panelHeight / 2 + 110 * scale + i * 40 * scale,
-                    `${i + 1}. ${entry.player} - ${entry.score}`,
-                    {
-                        fontFamily: 'Arial',
-                        fontSize: Math.round(26 * scale),
-                        color: '#ffffff',
-                        align: 'left'
-                    }
-                ).setOrigin(0.5, 0).setDepth(1002);
-                this.leaderboardEntries.push(entryText);
+            ).setOrigin(0.5);
+
+            // Handle click event on background
+            buttonBg.on('pointerdown', () => {
+                // Update all buttons
+                buttons.forEach((btn, idx) => {
+                    btn.bg.setFillStyle(Phaser.Display.Color.HexStringToColor('#333333').color);
+                    btn.bg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor('#aaaaaa').color);
+                });
+
+                // Highlight selected button
+                buttonBg.setFillStyle(Phaser.Display.Color.HexStringToColor('#555555').color);
+                buttonBg.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor('#ffffff').color);
+
+                this.difficulty = diff;
+                this.soundManager.playSound('click');
+                console.log('Difficulty set to:', diff);
             });
-        }
-        this.leaderboardModal.add(this.leaderboardEntries);
+
+            buttons.push({ text: button, bg: buttonBg });
+        });
     }
 
     startGame() {

@@ -50,6 +50,21 @@ export default class MathProblem {
         };
     }
 
+    generateDivisionProblem() {
+        // For division, ensure integer results and avoid division by zero
+        let num2, num1;
+        const difficulty = this.difficulty;
+        // Use multiplication ranges for divisor/dividend
+        const ranges = OPERATION_RANGES.multiplication[difficulty] || { min1: 1, max1: 10, min2: 1, max2: 10 };
+        num2 = this.getRandomInt(ranges.min2, ranges.max2); // divisor
+        const result = this.getRandomInt(ranges.min1, ranges.max1); // quotient
+        num1 = num2 * result; // dividend
+        return {
+            text: `${num1} ÷ ${num2}`,
+            result: result
+        };
+    }
+
     getNextProblem() {
         // Get available operations based on difficulty
         const availableOperations = DIFFICULTY_SETTINGS[this.difficulty].availableOperations;
@@ -64,6 +79,8 @@ export default class MathProblem {
                 return this.generateSubtractionProblem();
             case 'multiplication':
                 return this.generateMultiplicationProblem();
+            case 'division':
+                return this.generateDivisionProblem();
             default:
                 return this.generateAdditionProblem();
         }

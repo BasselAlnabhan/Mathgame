@@ -1,149 +1,23 @@
 export const DIFFICULTY_SETTINGS = {
   Easy: {
-    monsterSpawnInterval: 5000,
-    monsterSpeedBase: 50,
-    maxMonsters: 3,
-    availableOperations: ['addition']
+    monsterSpawnInterval: 6000,
+    monsterSpeedBase: 30,
+    maxMonsters: 2,
+    availableOperations: ['addition', 'subtraction']
   },
   Medium: {
     monsterSpawnInterval: 4000,
     monsterSpeedBase: 70,
     maxMonsters: 4,
-    availableOperations: ['addition', 'subtraction']
+    availableOperations: ['addition', 'subtraction', 'multiplication']
   },
   Hard: {
     monsterSpawnInterval: 3000,
     monsterSpeedBase: 90,
     maxMonsters: 5,
-    availableOperations: ['addition', 'subtraction', 'multiplication']
+    availableOperations: ['addition', 'subtraction', 'multiplication', 'division']
   }
 };
-
-// Add presets for game rules based on old XML format
-export const GAME_RULES_PRESETS = {
-  Easy: {
-    speedMin: 20,
-    speedStartDelay: 60000, // 60 seconds
-    speedInc: 10,
-    speedEvery: 20000, // 20 seconds
-    speedMax: 40,
-    monstersToUse: ['monster1', 'monster2'],
-    monstersMin: 1,
-    monstersStartDelay: 0,
-    monstersInc: 1,
-    monstersEvery: 60000, // 60 seconds
-    monstersMax: 3,
-    lessionType: 2, // Addition
-    lessionMinValue: 1,
-    lessionMaxValue: 10
-  },
-  Medium: {
-    speedMin: 30,
-    speedStartDelay: 40000, // 40 seconds
-    speedInc: 15,
-    speedEvery: 20000, // 20 seconds
-    speedMax: 60,
-    monstersToUse: ['monster1', 'monster2', 'badpig'],
-    monstersMin: 2,
-    monstersStartDelay: 0,
-    monstersInc: 1,
-    monstersEvery: 40000, // 40 seconds
-    monstersMax: 5,
-    lessionType: 1, // Random multiplication
-    lessionMinValue: 2,
-    lessionMaxValue: 10
-  },
-  Hard: {
-    speedMin: 40,
-    speedStartDelay: 20000, // 20 seconds
-    speedInc: 20,
-    speedEvery: 15000, // 15 seconds
-    speedMax: 80,
-    monstersToUse: ['monster1', 'monster2', 'badpig'],
-    monstersMin: 3,
-    monstersStartDelay: 0,
-    monstersInc: 2,
-    monstersEvery: 30000, // 30 seconds
-    monstersMax: 8,
-    lessionType: 3, // Subtraction
-    lessionMinValue: 10,
-    lessionMaxValue: 30,
-    lessionAllowNegativeResult: false
-  }
-};
-
-// Storage key for custom rules
-const CUSTOM_RULES_STORAGE_KEY = 'mathMonsterCustomRules';
-
-// Save custom rules to localStorage
-export function saveCustomRules(rules) {
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(CUSTOM_RULES_STORAGE_KEY, JSON.stringify(rules));
-      return true;
-    } catch (error) {
-      console.error('Failed to save custom rules:', error);
-      return false;
-    }
-  }
-  return false;
-}
-
-// Load custom rules from localStorage
-export function loadCustomRules() {
-  if (typeof localStorage !== 'undefined') {
-    try {
-      const storedRules = localStorage.getItem(CUSTOM_RULES_STORAGE_KEY);
-      if (storedRules) {
-        return JSON.parse(storedRules);
-      }
-    } catch (error) {
-      console.error('Failed to load custom rules:', error);
-    }
-  }
-  return null;
-}
-
-// Convert rules to XML format for legacy code compatibility
-export function convertRulesToXML(rules) {
-  // Create lesson tag based on lesson type
-  let lessonTag = '';
-  switch (rules.lessionType) {
-    case 0: // MULTIPLY_TABLE
-      lessonTag = `<lession type="multiply_table" table="${rules.lessionMultiplyTable}">`;
-      break;
-    case 1: // MULTIPLY_RANDOM
-      lessonTag = `<lession type="multiply_random" min="${rules.lessionMinValue}" max="${rules.lessionMaxValue}">`;
-      break;
-    case 2: // ADDITION_RANDOM
-      lessonTag = `<lession type="addition_random" min="${rules.lessionMinValue}" max="${rules.lessionMaxValue}">`;
-      break;
-    case 3: // SUBSTRACTION_RANDOM
-      lessonTag = `<lession type="substraction_random" min="${rules.lessionMinValue}" max="${rules.lessionMaxValue}" allownegativeresult="${rules.lessionAllowNegativeResult || false}">`;
-      break;
-  }
-
-  // Create the full XML
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rules>
-  <speed min="${rules.speedMin}" startdelay="${rules.speedStartDelay}" increment="${rules.speedInc}" every="${rules.speedEvery}" max="${rules.speedMax}"/>
-  <monsters list="['${rules.monstersToUse.join("','")}']" min="${rules.monstersMin}" startdelay="${rules.monstersStartDelay}" increment="${rules.monstersInc}" every="${rules.monstersEvery}" max="${rules.monstersMax}"/>
-  ${lessonTag}
-</rules>`;
-
-  return xml;
-}
-
-// Get rule set based on difficulty or custom rules
-export function getRulesByDifficulty(difficulty) {
-  const customRules = loadCustomRules();
-  
-  if (difficulty === 'Custom' && customRules) {
-    return customRules;
-  }
-  
-  return GAME_RULES_PRESETS[difficulty] || GAME_RULES_PRESETS.Medium;
-}
 
 export const OPERATION_RANGES = {
   addition: {

@@ -3,14 +3,13 @@ import BootScene from './scenes/BootScene';
 import MenuScene from './scenes/MenuScene';
 import GameScene from './scenes/GameScene';
 import GameOverScene from './scenes/GameOverScene';
-import SettingsScene from './scenes/SettingsScene';
 
 const config = {
     type: Phaser.AUTO,
     width: 1024,
     height: 768,
     backgroundColor: '#000000',
-    scene: [BootScene, MenuScene, GameScene, GameOverScene, SettingsScene],
+    scene: [BootScene, MenuScene, GameScene, GameOverScene],
     audio: {
         disableWebAudio: false,
     },

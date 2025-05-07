@@ -3,8 +3,7 @@ import Monster from '../objects/Monster';
 import MathProblem from '../objects/MathProblem';
 import SoundManager from '../managers/SoundManager';
 import UIFactory from '../managers/UIFactory';
-import { DIFFICULTY_SETTINGS, OPERATION_RANGES, MONSTER_TYPES, GAME_PROGRESSION, POINTS, UI_STYLES, LAYOUT, getRulesByDifficulty, convertRulesToXML } from '../config/GameConfig';
-import Rules from '../objects/Rules';
+import { DIFFICULTY_SETTINGS, OPERATION_RANGES, MONSTER_TYPES, GAME_PROGRESSION, POINTS, UI_STYLES, LAYOUT } from '../config/GameConfig';
 
 export default class GameScene extends Phaser.Scene {
     constructor() {
@@ -35,20 +34,7 @@ export default class GameScene extends Phaser.Scene {
         this.difficulty = data.difficulty || 'Medium';
         console.log('GameScene initialized with difficulty:', this.difficulty);
 
-        // Get rules based on difficulty
-        this.gameRules = getRulesByDifficulty(this.difficulty);
-
-        // Generate XML rules for compatibility with existing rules.js
-        this.xmlRules = convertRulesToXML(this.gameRules);
-        console.log('Generated XML rules:', this.xmlRules);
-
-        // Create a Blob containing the XML rules
-        const blob = new Blob([this.xmlRules], { type: 'application/xml' });
-
-        // Create a URL for the Blob
-        this.xmlRulesUrl = URL.createObjectURL(blob);
-
-        // Set difficulty from menu scene
+        // Set difficulty for math problems
         this.mathProblem.setDifficulty(this.difficulty);
 
         // Get settings based on difficulty
@@ -127,26 +113,6 @@ export default class GameScene extends Phaser.Scene {
 
         // Create game UI
         this.setupUI();
-
-        // Load XML rules from the Blob URL
-        this.rules = new Rules();
-
-        // Try to load rules from XML blob
-        if (this.xmlRulesUrl) {
-            if (this.rules.LoadRules(this.xmlRulesUrl)) {
-                console.log('Game rules loaded successfully from settings');
-
-                // Clean up the URL object to prevent memory leaks
-                URL.revokeObjectURL(this.xmlRulesUrl);
-            } else {
-                console.error('Failed to load custom rules, using default settings');
-                // Fall back to difficulty settings if XML loading fails
-                this.setupDefaultDifficultySettings();
-            }
-        } else {
-            console.log('No custom rules found, using default difficulty settings');
-            this.setupDefaultDifficultySettings();
-        }
 
         // Initialize game state
         this.resetGame();
@@ -285,19 +251,19 @@ export default class GameScene extends Phaser.Scene {
         // Check if game is over
         if (this.gameOver) return;
 
-        // Get current monster rule
-        const rule = this.rules.QueryRules(1000); // Update for 1 second
-
         // Check maximum monsters
-        if (this.monsters.length >= rule.numMonsters) {
+        if (this.monsters.length >= this.maxMonsters) {
             return;
         }
 
-        // Get random monster type from rules
-        const monsterType = this.rules.GetRandomMonsterName();
+        // Get random monster type
+        const monsterType = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)];
 
-        // Get task from rules
-        const task = this.rules.GetNextTask();
+        // Generate a math problem based on difficulty
+        const task = this.mathProblem.getNextProblem();
+
+        // Use the current monster speed
+        const speed = this.monsterSpeedBase;
 
         // Create monster
         const monster = new Monster(
@@ -305,7 +271,7 @@ export default class GameScene extends Phaser.Scene {
             monsterType,
             task.text,
             task.result,
-            rule.speed,
+            speed,
             this.isLandscape
         );
 
@@ -328,7 +294,7 @@ export default class GameScene extends Phaser.Scene {
         this.monsters.push(monster);
 
         // Log monster creation
-        console.log(`Added ${monsterType} with problem: ${task.text} = ${task.result}, speed: ${rule.speed}`);
+        console.log(`Added ${monsterType} with problem: ${task.text} = ${task.result}, speed: ${speed}`);
     }
 
     // Helper method to check if a position is too close to existing monsters
@@ -631,92 +597,11 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    setupDefaultDifficultySettings() {
-        // Create default rules based on selected difficulty
-        const settings = DIFFICULTY_SETTINGS[this.difficulty];
-
-        // Convert the settings to rules format
-        this.rules = {
-            speedMin: settings.monsterSpeedBase,
-            speedStartDelay: 60000, // 60 seconds
-            speedInc: 10,
-            speedEvery: 30000, // 30 seconds
-            speedMax: settings.monsterSpeedBase * 2,
-            monstersToUse: MONSTER_TYPES,
-            monstersMin: 1,
-            monstersStartDelay: 0,
-            monstersInc: 1,
-            monstersEvery: 40000, // 40 seconds
-            monstersMax: settings.maxMonsters,
-
-            // Set up math problems based on difficulty
-            lessionType: 2, // Default to addition
-            lessionMinValue: 1,
-            lessionMaxValue: 10,
-
-            // Game state variables
-            Reset: function () {
-                this.gameTime = 0;
-                this.numMonsterAlive = this.monstersMin;
-                this.maxMonsterDone = this.numMonsterAlive >= this.monstersMax;
-                this.actualSpeed = this.speedMin;
-                this.maxSpeedDone = this.actualSpeed >= this.speedMax;
-            },
-
-            QueryRules: function (dt) {
-                this.gameTime += dt;
-
-                // Test if it's time for next monster increase
-                if (!this.maxMonsterDone && this.gameTime >= this.nextMonsterIncTime) {
-                    this.nextMonsterIncTime += this.monstersEvery;
-                    this.numMonsterAlive += this.monstersInc;
-                    this.maxMonsterDone = this.numMonsterAlive >= this.monstersMax;
-                }
-
-                // Test speed increase
-                if (!this.maxSpeedDone && this.gameTime >= this.nextSpeedIncTime) {
-                    this.nextSpeedIncTime += this.speedEvery;
-                    this.actualSpeed += this.speedInc;
-                    this.maxSpeedDone = this.actualSpeed >= this.speedMax;
-                }
-
-                return {
-                    numMonsters: this.numMonsterAlive,
-                    speed: this.actualSpeed
-                };
-            },
-
-            GetNextTask: function () {
-                // Generate addition problem by default
-                const min = 1;
-                const max = 20;
-                const param1 = Math.floor(Math.random() * (max - min + 1)) + min;
-                const param2 = Math.floor(Math.random() * (max - min + 1)) + min;
-
-                return {
-                    text: param1 + " + " + param2,
-                    result: param1 + param2
-                };
-            },
-
-            GetRandomMonsterName: function () {
-                const i = Math.floor(Math.random() * this.monstersToUse.length);
-                return this.monstersToUse[i];
-            }
-        };
-
-        // Initialize the rules
-        this.rules.Reset();
-    }
-
     resetGame() {
         console.log('Resetting game state');
 
         this.score = 0;
         this.scoreText.setText('Score: 0');
-
-        // Reset rules for new game
-        this.rules.Reset();
 
         // Reset all monster arrays
         this.monsters.forEach(monster => monster.destroy());
