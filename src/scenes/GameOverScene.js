@@ -23,6 +23,7 @@ export default class GameOverScene extends Phaser.Scene {
         if (data) {
             this.score = data.score || 0;
             this.difficulty = data.difficulty || 'Easy';
+            this.problemsStats = data.problemsStats || {};
         }
     }
 
@@ -131,6 +132,43 @@ export default class GameOverScene extends Phaser.Scene {
                 }
             ).setOrigin(0.5);
 
+            // After adding score and difficulty text, add analysis/suggestion
+            let suggestion = '';
+            if (this.problemsStats && Object.keys(this.problemsStats).length > 0) {
+                // Find the operation with the worst performance
+                let worstOp = null;
+                let worstRatio = Infinity;
+                for (const op in this.problemsStats) {
+                    const stats = this.problemsStats[op];
+                    const total = (stats.correct || 0) + (stats.wrong || 0);
+                    if (total === 0) continue;
+                    const wrongRatio = (stats.wrong || 0) / total;
+                    if (wrongRatio > worstRatio) continue;
+                    if (wrongRatio < worstRatio || (wrongRatio === worstRatio && (stats.wrong || 0) > 0)) {
+                        worstRatio = wrongRatio;
+                        worstOp = op;
+                    }
+                }
+                if (worstOp && this.problemsStats[worstOp].wrong > 0) {
+                    suggestion = `Tip: Practice more on ${worstOp} problems!`;
+                }
+            }
+            if (suggestion) {
+                this.add.text(
+                    width / 2,
+                    height * 0.52,
+                    suggestion,
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: Math.round(24 * scale),
+                        color: '#FFD700',
+                        stroke: '#000000',
+                        strokeThickness: 2,
+                        align: 'center'
+                    }
+                ).setOrigin(0.5);
+            }
+
             // Add play again button
             this.uiFactory.createButton(
                 width / 2,
@@ -188,6 +226,43 @@ export default class GameOverScene extends Phaser.Scene {
                     strokeThickness: 3
                 }
             ).setOrigin(0.5);
+
+            // After adding score and difficulty text, add analysis/suggestion
+            let suggestion = '';
+            if (this.problemsStats && Object.keys(this.problemsStats).length > 0) {
+                // Find the operation with the worst performance
+                let worstOp = null;
+                let worstRatio = Infinity;
+                for (const op in this.problemsStats) {
+                    const stats = this.problemsStats[op];
+                    const total = (stats.correct || 0) + (stats.wrong || 0);
+                    if (total === 0) continue;
+                    const wrongRatio = (stats.wrong || 0) / total;
+                    if (wrongRatio > worstRatio) continue;
+                    if (wrongRatio < worstRatio || (wrongRatio === worstRatio && (stats.wrong || 0) > 0)) {
+                        worstRatio = wrongRatio;
+                        worstOp = op;
+                    }
+                }
+                if (worstOp && this.problemsStats[worstOp].wrong > 0) {
+                    suggestion = `Tip: Practice more on ${worstOp} problems!`;
+                }
+            }
+            if (suggestion) {
+                this.add.text(
+                    width / 2,
+                    height * 0.42,
+                    suggestion,
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: Math.round(24 * scale),
+                        color: '#FFD700',
+                        stroke: '#000000',
+                        strokeThickness: 2,
+                        align: 'center'
+                    }
+                ).setOrigin(0.5);
+            }
 
             // In portrait mode, buttons side by side to save vertical space
             // Play again button

@@ -15,6 +15,7 @@ export default class GameScene extends Phaser.Scene {
         this.score = 0;
         this.answerText = '';
         this.tries = 3; // Add tries counter
+        this.problemsStats = {};
 
         // Game timing
         this.lastMonsterTime = 0;
@@ -76,8 +77,8 @@ export default class GameScene extends Phaser.Scene {
             this.setupUI();
         }
 
-        // Recalculate game over line with the orientation parameter
-        this.gameOverLine = LAYOUT.gameOverLine(this.cameras.main.height, this.isLandscape);
+        // Recalculate game over line to match answer buttons
+        this.gameOverLine = this.cameras.main.height - 70;
     }
 
     cleanupUI() {
@@ -100,6 +101,7 @@ export default class GameScene extends Phaser.Scene {
         this.lastMonsterTime = 0;
         this.nextSpeedIncreaseTime = GAME_PROGRESSION.speedIncreaseInterval;
         this.tries = 3; // Reset tries on game start
+        this.problemsStats = {};
     }
 
     create() {
@@ -132,7 +134,7 @@ export default class GameScene extends Phaser.Scene {
     setupBackground() {
         // Set up game over line - using new LAYOUT function with orientation parameter
         const height = this.cameras.main.height;
-        this.gameOverLine = LAYOUT.gameOverLine(height, this.isLandscape);
+        this.gameOverLine = this.cameras.main.height - 70;
 
         // Add background - adjusted for responsiveness
         this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'background')
@@ -200,6 +202,9 @@ export default class GameScene extends Phaser.Scene {
 
         // Always use direct monster targeting and answer selection modal for all devices
         this.setupDirectTargeting();
+
+        // After setting up the UI, set the game over line to the answer button Y position
+        this.gameOverLine = height - 70;
     }
 
     setupDirectTargeting() {
@@ -274,6 +279,7 @@ export default class GameScene extends Phaser.Scene {
             speed,
             this.isLandscape
         );
+        monster.operationType = task.operationType; // Store operation type
 
         // Always make the monster tappable and interactive
         monster.setInteractive({ useHandCursor: true });
@@ -332,7 +338,7 @@ export default class GameScene extends Phaser.Scene {
         window.removeEventListener('resize', this.handleResize.bind(this));
 
         // Go to game over scene
-        this.scene.start('GameOverScene', { score: this.score, difficulty: this.difficulty });
+        this.scene.start('GameOverScene', { score: this.score, difficulty: this.difficulty, problemsStats: this.problemsStats });
     }
 
     update(time, delta) {
@@ -514,6 +520,9 @@ export default class GameScene extends Phaser.Scene {
                 buttonText.setScale(1);
             });
 
+            // Use operationType from monster
+            let operationType = monster.operationType;
+
             // Handle button click
             button.on('pointerdown', () => {
                 // Check if answer is correct
@@ -549,6 +558,12 @@ export default class GameScene extends Phaser.Scene {
                         this.currentTargetMonster = bottomMonster;
                         this.createAnswerSelectionModal(bottomMonster);
                     }
+
+                    // Track correct answer
+                    if (operationType) {
+                        if (!this.problemsStats[operationType]) this.problemsStats[operationType] = { correct: 0, wrong: 0 };
+                        this.problemsStats[operationType].correct++;
+                    }
                 } else {
                     // Wrong answer
                     this.soundManager.playSound('wrong');
@@ -566,6 +581,12 @@ export default class GameScene extends Phaser.Scene {
                     // End game if out of tries
                     if (this.tries <= 0) {
                         this.endGame();
+                    }
+
+                    // Track wrong answer
+                    if (operationType) {
+                        if (!this.problemsStats[operationType]) this.problemsStats[operationType] = { correct: 0, wrong: 0 };
+                        this.problemsStats[operationType].wrong++;
                     }
                 }
             });

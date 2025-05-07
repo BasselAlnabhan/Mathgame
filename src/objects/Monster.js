@@ -101,10 +101,7 @@ export default class Monster extends Phaser.GameObjects.Container {
                 Math.max(50, UI_STYLES.problemText.fontSize) :
                 UI_STYLES.problemText.fontSize,
             // Enhance contrast on the text
-            strokeThickness: this.isMobile ? 6 : UI_STYLES.problemText.strokeThickness,
-            // Add background for better readability on mobile
-            backgroundColor: this.isMobile ? '#00000088' : null,
-            padding: this.isMobile ? { x: 8, y: 4 } : null
+            strokeThickness: this.isMobile ? 6 : UI_STYLES.problemText.strokeThickness
         };
 
         // Add text with math problem

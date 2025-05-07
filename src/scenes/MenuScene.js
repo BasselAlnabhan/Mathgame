@@ -8,6 +8,17 @@ export default class MenuScene extends Phaser.Scene {
         super({ key: 'MenuScene' });
         this.isLandscape = true;
         this.isMobile = false;
+        // Load last chosen difficulty from localStorage if available
+        let lastDifficulty = 'Easy';
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const stored = localStorage.getItem('lastDifficulty');
+                if (stored && ['Easy', 'Medium', 'Hard'].includes(stored)) {
+                    lastDifficulty = stored;
+                }
+            }
+        } catch (e) { }
+        this.difficulty = lastDifficulty;
         // Supabase client setup
         if (!import.meta.env.VITE_SUPABASE_URL) {
             console.warn('VITE_SUPABASE_URL is NOT set');
@@ -100,16 +111,6 @@ export default class MenuScene extends Phaser.Scene {
         const height = this.cameras.main.height;
         const scale = Math.min(width / 1024, height / 768);
 
-        // Add a semi-transparent overlay to improve text contrast
-        this.add.rectangle(
-            width / 2,
-            height / 2,
-            width * 0.8,
-            height * 0.9,
-            0x000000,
-            0.4
-        ).setOrigin(0.5);
-
         // Layout depends on orientation
         if (this.isLandscape) {
             // Landscape layout
@@ -177,6 +178,12 @@ export default class MenuScene extends Phaser.Scene {
                 ['Easy', 'Medium', 'Hard'],
                 (difficulty) => {
                     this.difficulty = difficulty;
+                    // Save last chosen difficulty to localStorage
+                    try {
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.setItem('lastDifficulty', difficulty);
+                        }
+                    } catch (e) { }
                     this.soundManager.playSound('click');
                     console.log('Difficulty set to:', difficulty);
                 },
@@ -258,6 +265,12 @@ export default class MenuScene extends Phaser.Scene {
                 ['Easy', 'Medium', 'Hard'],
                 (difficulty) => {
                     this.difficulty = difficulty;
+                    // Save last chosen difficulty to localStorage
+                    try {
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.setItem('lastDifficulty', difficulty);
+                        }
+                    } catch (e) { }
                     this.soundManager.playSound('click');
                     console.log('Difficulty set to:', difficulty);
                 },

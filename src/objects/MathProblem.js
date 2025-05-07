@@ -71,18 +71,19 @@ export default class MathProblem {
 
         // Select a random operation from available ones
         const operation = availableOperations[Math.floor(Math.random() * availableOperations.length)];
+        this.lastOperationType = operation;
 
         switch (operation) {
             case 'addition':
-                return this.generateAdditionProblem();
+                return { ...this.generateAdditionProblem(), operationType: 'addition' };
             case 'subtraction':
-                return this.generateSubtractionProblem();
+                return { ...this.generateSubtractionProblem(), operationType: 'subtraction' };
             case 'multiplication':
-                return this.generateMultiplicationProblem();
+                return { ...this.generateMultiplicationProblem(), operationType: 'multiplication' };
             case 'division':
-                return this.generateDivisionProblem();
+                return { ...this.generateDivisionProblem(), operationType: 'division' };
             default:
-                return this.generateAdditionProblem();
+                return { ...this.generateAdditionProblem(), operationType: 'addition' };
         }
     }
 } 
