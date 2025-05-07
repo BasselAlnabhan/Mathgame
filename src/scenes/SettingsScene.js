@@ -5,13 +5,13 @@ import { GAME_RULES_PRESETS, saveCustomRules, loadCustomRules } from '../config/
 
 // Improved logical presets with more comprehensive settings
 const LOGICAL_PRESETS = {
-    Easy: { 
-        speedMin: 1, 
-        speedMax: 50, 
+    Easy: {
+        speedMin: 1,
+        speedMax: 50,
         speedInc: 1,
         speedEvery: 10,
         speedStartDelay: 5,
-        monstersMin: 1, 
+        monstersMin: 1,
         monstersMax: 5,
         monstersInc: 1,
         monstersEvery: 20,
@@ -22,13 +22,13 @@ const LOGICAL_PRESETS = {
         lessionMaxValue: 10,
         arithmeticDifficulty: 'Easy Addition'
     },
-    Medium: { 
-        speedMin: 30, 
-        speedMax: 100, 
+    Medium: {
+        speedMin: 30,
+        speedMax: 100,
         speedInc: 2,
         speedEvery: 10,
         speedStartDelay: 3,
-        monstersMin: 3, 
+        monstersMin: 3,
         monstersMax: 10,
         monstersInc: 1,
         monstersEvery: 15,
@@ -39,13 +39,13 @@ const LOGICAL_PRESETS = {
         lessionMaxValue: 20,
         arithmeticDifficulty: 'Medium Addition'
     },
-    Hard: { 
-        speedMin: 50, 
-        speedMax: 150, 
+    Hard: {
+        speedMin: 50,
+        speedMax: 150,
         speedInc: 3,
         speedEvery: 8,
         speedStartDelay: 2,
-        monstersMin: 5, 
+        monstersMin: 5,
         monstersMax: 15,
         monstersInc: 2,
         monstersEvery: 10,
@@ -137,10 +137,10 @@ export default class SettingsScene extends Phaser.Scene {
 
         // Clear any remaining containers and complex objects
         this.children.removeAll(true);
-        
+
         // Reset any cached references
         this.presetButtons = {};
-        
+
         // Re-add background
         this.setupBackground();
     }
@@ -182,16 +182,19 @@ export default class SettingsScene extends Phaser.Scene {
         ).setOrigin(0.5);
 
         // Create tabs with original tab names
+        const tabsY = this.isMobile ? height * 0.14 : height * 0.16;
+        const tabHeight = this.isMobile ? 60 : 50;
         this.createTabs(
             width / 2,
-            this.isMobile ? height * 0.14 : height * 0.16,
-            ['Speed', 'Monsters', 'Math', 'Arithmetic']
+            tabsY,
+            ['Speed', 'Monsters', 'Math']
         );
 
-        // Adjust panel position to match new tab position
+        // Adjust panel position to always be below the tabs
         const panelWidth = this.isMobile ? width * 0.95 : width * 0.8;
         const panelHeight = this.isMobile ? height * 0.55 : height * 0.5;
-        const panelY = this.isMobile ? height * 0.25 : height * 0.26;
+        // Place panelY below the tabs, with 20px padding
+        const panelY = tabsY + tabHeight / 2 + 20 + panelHeight / 2;
 
         this.createSettingsPanel(
             width / 2,
@@ -302,7 +305,7 @@ export default class SettingsScene extends Phaser.Scene {
                     fontStyle: 'bold'
                 }
             ).setOrigin(0.5);
-            
+
             // Set same high depth for text
             tabText.setDepth(TAB_DEPTH);
 
@@ -336,7 +339,7 @@ export default class SettingsScene extends Phaser.Scene {
         const panel = this.add.rectangle(x, y, width, height, 0x222222, 0.8)
             .setOrigin(0.5)
             .setStrokeStyle(2, 0x3366cc);
-        
+
         // Set panel depth below tabs but above background
         panel.setDepth(10);
 
@@ -372,9 +375,6 @@ export default class SettingsScene extends Phaser.Scene {
                 break;
             case 'lesson':
                 this.createLessonSettings(x, contentY, contentWidth, height * 0.7);
-                break;
-            case 'arithmetic':
-                this.createArithmeticSettings(x, contentY, contentWidth, height * 0.7);
                 break;
         }
     }
@@ -601,15 +601,15 @@ export default class SettingsScene extends Phaser.Scene {
 
         // Adjust layout based on orientation and device type
         const labelWidth = this.isMobile && !this.isLandscape ? width * 0.8 : width * 0.4;
-        
+
         // Calculate positions based on available space
         const availableWidth = this.cameras.main.width * 0.7;
-        
+
         // Right-align labels
-        const labelX = this.isMobile && !this.isLandscape ? 
-            x - availableWidth/4 : 
-            x - availableWidth/3;
-        
+        const labelX = this.isMobile && !this.isLandscape ?
+            x - availableWidth / 4 :
+            x - availableWidth / 3;
+
         // Button group position (where slider used to be)
         const buttonGroupX = this.isMobile && !this.isLandscape ? x : x;
 
@@ -618,9 +618,9 @@ export default class SettingsScene extends Phaser.Scene {
 
             // Add right-aligned label with contrasting background
             const label = this.add.text(
-                labelX, 
-                yPos, 
-                field.label, 
+                labelX,
+                yPos,
+                field.label,
                 {
                     fontFamily: 'Arial',
                     fontSize: fontSize * scale,
@@ -634,12 +634,12 @@ export default class SettingsScene extends Phaser.Scene {
 
             // Get current value
             const currentValue = this.currentRules[field.key] || field.min;
-            
+
             // Generate discrete button values
             const range = field.max - field.min;
             const numButtons = Math.min(5, range); // Max 5 buttons 
             const buttonValues = [];
-            
+
             // Determine values for buttons
             if (range <= numButtons) {
                 // If range is small, show all values
@@ -652,42 +652,42 @@ export default class SettingsScene extends Phaser.Scene {
                     const value = Math.round(field.min + (range * i / (numButtons - 1)));
                     buttonValues.push(value);
                 }
-                
+
                 // Make sure max value is included
                 if (buttonValues[buttonValues.length - 1] !== field.max) {
                     buttonValues[buttonValues.length - 1] = field.max;
                 }
             }
-                
+
             // Calculate button dimensions
-            const buttonGroupWidth = this.isMobile && !this.isLandscape ? 
-                availableWidth * 0.6 : 
+            const buttonGroupWidth = this.isMobile && !this.isLandscape ?
+                availableWidth * 0.6 :
                 availableWidth * 0.4;
-                
+
             const buttonWidth = buttonGroupWidth / buttonValues.length;
             const buttonHeight = this.isMobile ? 40 : 30;
-            
+
             // Create button group container
             const buttonContainer = this.add.container(buttonGroupX, yPos);
             buttonContainer.setDepth(SETTINGS_BASE_DEPTH);
-            
+
             // Create buttons
             buttonValues.forEach((value, i) => {
                 const isSelected = currentValue === value;
-                const buttonX = (i - buttonValues.length/2 + 0.5) * buttonWidth;
-                
+                const buttonX = (i - buttonValues.length / 2 + 0.5) * buttonWidth;
+
                 // Button background
                 const buttonBg = this.add.rectangle(
-                    buttonX, 
-                    0, 
-                    buttonWidth - 4, 
-                    buttonHeight, 
+                    buttonX,
+                    0,
+                    buttonWidth - 4,
+                    buttonHeight,
                     isSelected ? 0x3366cc : 0x555555,
                     1
                 ).setOrigin(0.5);
-                
+
                 buttonBg.setStrokeStyle(2, isSelected ? 0xffffff : 0x888888);
-                
+
                 // Button text
                 const buttonText = this.add.text(
                     buttonX,
@@ -700,39 +700,39 @@ export default class SettingsScene extends Phaser.Scene {
                         fontStyle: isSelected ? 'bold' : 'normal'
                     }
                 ).setOrigin(0.5);
-                
+
                 // Make button interactive
                 buttonBg.setInteractive({ useHandCursor: true });
-                
+
                 // Add hover effects
                 buttonBg.on('pointerover', () => {
                     if (!isSelected) {
                         buttonBg.setFillStyle(0x666666);
                     }
                 });
-                
+
                 buttonBg.on('pointerout', () => {
                     if (!isSelected) {
                         buttonBg.setFillStyle(0x555555);
                     }
                 });
-                
+
                 // Add click handler
                 buttonBg.on('pointerdown', () => {
                     this.soundManager.playSound('click');
-                    
+
                     // Update the value
                     this.currentRules[field.key] = value;
-                    
+
                     // Change to custom preset
                     this.currentPreset = 'Custom';
                     this.updatePresetButtons();
-                    
+
                     // Refresh the UI to update button states
                     this.cleanupUI();
                     this.setupUI();
                 });
-                
+
                 // Add to container
                 buttonContainer.add(buttonBg);
                 buttonContainer.add(buttonText);
@@ -769,20 +769,20 @@ export default class SettingsScene extends Phaser.Scene {
             fontSize: fontSize,
             color: '#ffffff'
         }).setOrigin(0, 0.5);
-        
+
         container.add(labelText);
 
         // Set container to interactive with precise hit area
         const hitAreaWidth = boxSize + labelText.width + 20;
         const hitAreaHeight = Math.max(boxSize, labelText.height) + 10;
-        
+
         container.setSize(hitAreaWidth, hitAreaHeight);
         container.setInteractive({ useHandCursor: true });
-        
+
         // Position the hit area correctly
-        container.input.hitArea.x = x - boxSize/2;
-        container.input.hitArea.y = y - hitAreaHeight/2;
-        
+        container.input.hitArea.x = x - boxSize / 2;
+        container.input.hitArea.y = y - hitAreaHeight / 2;
+
         container.on('pointerdown', () => {
             this.soundManager.playSound('click');
             const newState = !checkboxFill.visible;
@@ -799,25 +799,25 @@ export default class SettingsScene extends Phaser.Scene {
     createPresetButtons(x, y, presets) {
         const width = this.cameras.main.width;
         const buttonSpacing = this.isMobile ? 15 : 10;
-        
+
         // Initialize presetButtons object if not already initialized
         this.presetButtons = {};
-        
+
         // Increase button size on mobile
         const buttonWidth = this.isMobile ? width * 0.2 : width * 0.15;
         const buttonHeight = this.isMobile ? 50 : 40;
-        
+
         // Calculate total width needed for all buttons in a row
         const totalButtonWidth = (presets.length * buttonWidth) + ((presets.length - 1) * buttonSpacing);
-        
+
         // Calculate starting X position to center the row of buttons
         const startX = x - (totalButtonWidth / 2) + (buttonWidth / 2);
-        
+
         // Create presets in a single row
         presets.forEach((preset, index) => {
             const buttonX = startX + (index * (buttonWidth + buttonSpacing));
             const buttonY = y;
-            
+
             const isActive = preset === this.currentPreset;
             const bg = this.add.rectangle(
                 buttonX,
@@ -826,7 +826,7 @@ export default class SettingsScene extends Phaser.Scene {
                 buttonHeight,
                 isActive ? 0x3366cc : 0x555555
             ).setStrokeStyle(2, isActive ? 0xffffff : 0x888888);
-            
+
             const text = this.add.text(
                 buttonX,
                 buttonY,
@@ -838,29 +838,29 @@ export default class SettingsScene extends Phaser.Scene {
                     fontStyle: isActive ? 'bold' : 'normal'
                 }
             ).setOrigin(0.5);
-            
+
             // Make button interactive
             bg.setInteractive({ useHandCursor: true });
-            
+
             // Add hover and press effects
             bg.on('pointerover', () => {
                 if (!isActive) {
                     bg.setFillStyle(0x666666);
                 }
             });
-            
+
             bg.on('pointerout', () => {
                 if (!isActive) {
                     bg.setFillStyle(0x555555);
                 }
             });
-            
+
             bg.on('pointerdown', () => {
                 this.soundManager.playSound('click');
                 this.applyPreset(preset);
                 this.updatePresetButtons();
             });
-            
+
             // Store references to update active state later
             this.presetButtons[preset] = { bg, text };
         });
@@ -871,12 +871,12 @@ export default class SettingsScene extends Phaser.Scene {
         for (const preset in this.presetButtons) {
             const isActive = preset === this.currentPreset;
             const button = this.presetButtons[preset];
-            
+
             // Update button style
-            const backgroundColor = isActive ? 
-                0x3366cc : 
+            const backgroundColor = isActive ?
+                0x3366cc :
                 0x555555;
-                
+
             button.bg.setFillStyle(backgroundColor);
             button.bg.setStrokeStyle(2, isActive ? 0xffffff : 0x888888);
             button.text.setStyle({
@@ -884,12 +884,12 @@ export default class SettingsScene extends Phaser.Scene {
             });
         }
     }
-    
+
     applyPreset(preset) {
         if (preset !== 'Custom') {
             this.currentRules = { ...LOGICAL_PRESETS[preset] };
             this.currentPreset = preset;
-            
+
             // Refresh the UI to reflect the new settings
             this.cleanupUI();
             this.setupUI();
@@ -959,34 +959,6 @@ export default class SettingsScene extends Phaser.Scene {
 
         // Return to menu scene
         this.scene.start('MenuScene');
-    }
-
-    // Add a new method to create arithmetic settings
-    createArithmeticSettings(x, y, width, height) {
-        const arithmeticText = this.add.text(
-            x, y, 'Select Arithmetic Difficulty:', {
-                fontFamily: 'Arial',
-                fontSize: 24,
-                color: '#ffffff'
-            }
-        ).setOrigin(0.5);
-
-        // Example options for arithmetic difficulty
-        const difficulties = ['Easy Addition', 'Hard Addition', 'Easy Subtraction', 'Hard Subtraction'];
-        difficulties.forEach((difficulty, index) => {
-            this.add.text(
-                x, y + 30 * (index + 1), difficulty, {
-                    fontFamily: 'Arial',
-                    fontSize: 20,
-                    color: '#ffffff'
-                }
-            ).setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => {
-                this.soundManager.playSound('click');
-                this.currentRules.arithmeticDifficulty = difficulty;
-            });
-        });
     }
 
     // Update isPreset method to use logical presets
