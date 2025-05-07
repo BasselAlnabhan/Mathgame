@@ -14,6 +14,7 @@ export default class GameScene extends Phaser.Scene {
         this.mathProblem = new MathProblem();
         this.score = 0;
         this.answerText = '';
+        this.tries = 3; // Add tries counter
 
         // Game timing
         this.lastMonsterTime = 0;
@@ -78,6 +79,7 @@ export default class GameScene extends Phaser.Scene {
 
     cleanupUI() {
         if (this.scoreText) this.scoreText.destroy();
+        if (this.triesText) this.triesText.destroy();
         // Close any open modal
         this.closeAnswerModal();
         if (this.numPad) {
@@ -94,6 +96,7 @@ export default class GameScene extends Phaser.Scene {
         this.gameTimeElapsed = 0;
         this.lastMonsterTime = 0;
         this.nextSpeedIncreaseTime = GAME_PROGRESSION.speedIncreaseInterval;
+        this.tries = 3; // Reset tries on game start
     }
 
     create() {
@@ -173,6 +176,22 @@ export default class GameScene extends Phaser.Scene {
                 fontStyle: 'bold'
             }
         ).setOrigin(0, 0); // Left aligned
+
+        // Add tries/lives text (top right)
+        this.triesText = this.add.text(
+            width - 20,
+            this.isLandscape ? 20 : 10,
+            `Tries: ${this.tries}`,
+            {
+                fontFamily: 'Arial',
+                fontSize: Math.round(28 * scale),
+                color: '#ff5555',
+                stroke: '#000000',
+                strokeThickness: 3,
+                fontStyle: 'bold',
+                align: 'right'
+            }
+        ).setOrigin(1, 0);
 
         // Always use direct monster targeting and answer selection modal for all devices
         this.setupDirectTargeting();
@@ -539,8 +558,8 @@ export default class GameScene extends Phaser.Scene {
                 } else {
                     // Wrong answer
                     this.soundManager.playSound('wrong');
-
-                    // Visual feedback for wrong answer - enhanced for mobile
+                    this.tries -= 1;
+                    if (this.triesText) this.triesText.setText(`Tries: ${this.tries}`);
                     this.tweens.add({
                         targets: [button, buttonText],
                         alpha: 0.3,
@@ -549,6 +568,11 @@ export default class GameScene extends Phaser.Scene {
                         yoyo: true,
                         repeat: 1
                     });
+                    this.cameras.main.shake(100, 0.01);
+                    // End game if out of tries
+                    if (this.tries <= 0) {
+                        this.endGame();
+                    }
                 }
             });
 
