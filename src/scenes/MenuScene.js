@@ -17,6 +17,16 @@ export default class MenuScene extends Phaser.Scene {
             this.difficulty = 'Medium'; // Default difficulty if no custom rules
         }
         // Supabase client setup
+        if (!import.meta.env.VITE_SUPABASE_URL) {
+            console.warn('VITE_SUPABASE_URL is NOT set');
+        } else {
+            console.info('VITE_SUPABASE_URL is set');
+        }
+        if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+            console.warn('VITE_SUPABASE_ANON_KEY is NOT set');
+        } else {
+            console.info('VITE_SUPABASE_ANON_KEY is set');
+        }
         this.supabase = createClient(
             import.meta.env.VITE_SUPABASE_URL,
             import.meta.env.VITE_SUPABASE_ANON_KEY
