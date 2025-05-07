@@ -14,43 +14,29 @@ export default class SoundManager {
         if (this.initialized) return;
 
         try {
+            // Create empty placeholder sounds if needed
+            this.createPlaceholderSounds();
+
             // Initialize music if it doesn't exist
             if (!this.scene.sound.get('music')) {
                 console.log('SoundManager: Adding background music');
-                this.sounds.music = this.scene.sound.add('music', SOUND_CONFIG.music);
+                try {
+                    this.sounds.music = this.scene.sound.add('music', SOUND_CONFIG.music);
+                } catch (error) {
+                    console.warn('SoundManager: Could not add music, using placeholder', error);
+                }
             } else {
                 console.log('SoundManager: Music already exists');
                 this.sounds.music = this.scene.sound.get('music');
             }
 
-            // Initialize effect sounds
-            this.sounds.explosion = this.scene.sound.add('boom', {
-                volume: SOUND_CONFIG.effects.volume
-            });
-
-            // Add monster specific sound effects
-            this.sounds.wario = this.scene.sound.add('wario', {
-                volume: SOUND_CONFIG.effects.volume
-            });
-
-            this.sounds.pig = this.scene.sound.add('pig', {
-                volume: SOUND_CONFIG.effects.volume
-            });
-
-            // Add click sound for buttons and number inputs
-            this.sounds.click = this.scene.sound.add('click', {
-                volume: SOUND_CONFIG.effects.volume * 0.7
-            });
-
-            // Add sound for correct answer
-            this.sounds.correct = this.scene.sound.add('correct', {
-                volume: SOUND_CONFIG.effects.volume * 1.2
-            });
-
-            // Add sound for wrong answer
-            this.sounds.wrong = this.scene.sound.add('wrong', {
-                volume: SOUND_CONFIG.effects.volume
-            });
+            // Initialize effect sounds with error handling for each
+            this.addSoundWithFallback('explosion', 'boom');
+            this.addSoundWithFallback('wario', 'wario');
+            this.addSoundWithFallback('pig', 'pig');
+            this.addSoundWithFallback('click', 'click', 0.7);
+            this.addSoundWithFallback('correct', 'correct', 1.2);
+            this.addSoundWithFallback('wrong', 'wrong');
 
             this.initialized = true;
             console.log('SoundManager: Initialized successfully');
@@ -59,7 +45,48 @@ export default class SoundManager {
             this.checkAudioContext();
         } catch (error) {
             console.error('SoundManager: Error initializing sounds:', error);
+            // Set initialized to true anyway to prevent repeated init attempts
+            this.initialized = true;
         }
+    }
+
+    // Helper method to add a sound with fallback
+    addSoundWithFallback(soundKey, audioKey, volumeMultiplier = 1) {
+        try {
+            if (this.scene.cache.audio.exists(audioKey)) {
+                this.sounds[soundKey] = this.scene.sound.add(audioKey, {
+                    volume: SOUND_CONFIG.effects.volume * volumeMultiplier
+                });
+                console.log(`SoundManager: Added ${soundKey} sound successfully`);
+            } else {
+                console.warn(`SoundManager: Audio key "${audioKey}" not found in cache, using placeholder`);
+                this.sounds[soundKey] = this.createDummySound();
+            }
+        } catch (error) {
+            console.warn(`SoundManager: Error adding ${soundKey} sound, using placeholder`, error);
+            this.sounds[soundKey] = this.createDummySound();
+        }
+    }
+
+    // Create a dummy sound object that mimics the Phaser sound interface
+    createDummySound() {
+        return {
+            play: () => {},
+            stop: () => {},
+            pause: () => {},
+            resume: () => {},
+            isPlaying: false
+        };
+    }
+
+    // Create placeholder sounds to prevent errors
+    createPlaceholderSounds() {
+        // Create placeholder sounds for common keys
+        const soundKeys = ['music', 'explosion', 'wario', 'pig', 'click', 'correct', 'wrong'];
+        
+        soundKeys.forEach(key => {
+            this.sounds[key] = this.createDummySound();
+        });
     }
 
     checkAudioContext() {
@@ -106,7 +133,8 @@ export default class SoundManager {
                 this.sounds[key].play();
                 return true;
             } else {
-                console.warn(`SoundManager: Sound '${key}' not found`);
+                console.warn(`SoundManager: Sound '${key}' not found, creating placeholder`);
+                this.sounds[key] = this.createDummySound();
                 return false;
             }
         } catch (error) {
