@@ -7,25 +7,57 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+    strategy:
+      matrix:
+        node-version: [18.x] # Specify your Node.js version
 
-      - name: Set up Node.js
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
-          node-version: 18
-          cache: "npm"
+          node-version: ${{ matrix.node-version }}
+          cache: "npm" # Cache npm dependencies
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Run Unit Tests
+        run: npm run test:unit
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+        # This installs browsers needed by Playwright.
+        # --with-deps installs OS-level dependencies for the browsers.
+
+      - name: Run E2E Tests
+        run: npm run test:e2e
+
+      - name: Build Project
+        run: npm run build
+        # Ensure your playwright.config.js webServer command does not conflict if it also builds.
+
+      - name: Upload E2E test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report/ # Default Playwright HTML report output
+          retention-days: 30
+
+      - name: Upload Jest coverage report (optional)
+        uses: actions/upload-artifact@v3
+        with:
+          name: jest-coverage-report
+          path: coverage/
+          retention-days: 30
 
   deploy:
-    needs: test
+    needs: build-and-test
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     steps:
