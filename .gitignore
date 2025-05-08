@@ -49,4 +49,9 @@ assets/temp/
 
 # Coverage and test reports
 coverage/
-.nyc_output/ 
+.nyc_output/
+playwright-report/
+test-results/
+
+# Supabase
+supabase/.temp/ 
